@@ -9,6 +9,7 @@ import { collection, addDoc, getDoc, deleteDoc, serverTimestamp, onSnapshot, que
 import { db } from '../firebaseConfig';
 import { getAuth } from 'firebase/auth';
 import { SwipeListView } from 'react-native-swipe-list-view';
+import * as Location from 'expo-location';
 
 const auth = getAuth();
 
@@ -23,6 +24,21 @@ export default function Dashboard() {
   const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
 
   useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'Location permission is required to use this feature.'
+        );
+        return;
+      }
+  
+      const location = await Location.getCurrentPositionAsync({});
+      console.log("User location:", location.coords);
+      // Optionally store in state or Firestore
+    })();
+    
     const user = auth.currentUser;
     if (!user) return;
 
@@ -51,6 +67,8 @@ export default function Dashboard() {
     });
 
     return () => unsubscribe();
+
+  
   }, []);
 
   const handleNewChat = async () => {
