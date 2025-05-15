@@ -4,13 +4,8 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-
 // Your web app's Firebase configuration
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyBlWHSZTflw67kCU2PyfiIuzUyvyuSOawg",
   authDomain: "adsp-34002-ip07-visionary-ai.firebaseapp.com",
   projectId: "adsp-34002-ip07-visionary-ai",
@@ -21,3 +16,9 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+

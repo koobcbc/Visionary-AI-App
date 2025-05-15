@@ -39,4 +39,5 @@ app-example
 
 google-cloud-sdk/
 
-
+firebase-debug.log
+.env

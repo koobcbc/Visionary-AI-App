@@ -12,6 +12,8 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../../../firebaseConfig';
 import { Timestamp } from 'firebase/firestore';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import Constants from 'expo-constants';
 
 
 type Message = {
@@ -32,7 +34,7 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
 
   const flatListRef = useRef<FlatList>(null);
 
-  console.log("user", auth.currentUser?.email)
+  // console.log("user", auth.currentUser?.email)
   useEffect(() => {
     if (!chatId) return;
 
@@ -72,6 +74,41 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
       msg.toLowerCase().includes("hello") ? "Hi there! How can I help you?" :
         "I'm a demo bot responding to your message.";
 
+  // const app = initializeApp(firebaseConfig);
+  // const functions = getFunctions(app);
+  // const getGeminiResponse = httpsCallable(functions, "generateFromGemini");
+
+  const API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY;
+  const genAI = new GoogleGenerativeAI(API_KEY);
+  // Function to generate a response from Gemini Pro
+  async function getGeminiResponse(msg: string, isImage = false) {
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
+
+      const chat = model.startChat({
+        history: [
+          {
+            role: "user",
+            parts: [{ text: "Hi" }],
+          },
+          {
+            role: "model",
+            parts: [{ text: "Hello! How can I assist you today?" }],
+          },
+        ],
+      });
+
+      const result = await chat.sendMessage(msg);
+      const response = result.response;
+      const text = response.text();
+      console.log("Gemini says:", text);
+      return text;
+    } catch (error) {
+      console.error("Error in Gemini API call:", error);
+      return "Sorry, something went wrong.";
+    }
+  }
+
   const handleSend = async () => {
     if (!input.trim()) return;
 
@@ -86,13 +123,20 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
     setInput('');
 
     setTimeout(async () => {
-      await addDoc(collection(db, `chats/${chatId}/messages`), {
-        text: fakeBotResponse(input),
-        createdAt: serverTimestamp(),
-        user: "AI Bot",
-        userId: auth.currentUser?.uid,
-        sender: "bot"
-      });
+      try {
+        const result = await getGeminiResponse(input);
+        const response = result;
+        console.log("Gemini response:", response);
+        await addDoc(collection(db, `chats/${chatId}/messages`), {
+          text: response,
+          createdAt: serverTimestamp(),
+          user: "AI Bot",
+          userId: auth.currentUser?.uid,
+          sender: "bot"
+        });
+      } catch (error) {
+        console.error("Gemini callable error:", error);
+      }
     }, 1200);
   };
 
@@ -117,13 +161,21 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
       });
 
       setTimeout(async () => {
-        await addDoc(collection(db, `chats/${chatId}/messages`), {
-          text: fakeBotResponse(uri, true),
-          createdAt: serverTimestamp(),
-          user: "AI Bot",
-          userId: auth.currentUser?.uid,
-          sender: "bot"
-        });
+        try {
+          const result = await getGeminiResponse(`Please analyze this image: ${uri}`);
+          const response = result;
+          console.log("Gemini response:", response);
+
+          await addDoc(collection(db, `chats/${chatId}/messages`), {
+            text: response,
+            createdAt: serverTimestamp(),
+            user: "AI Bot",
+            userId: auth.currentUser?.uid,
+            sender: "bot"
+          });
+        } catch (error) {
+          console.error("Gemini callable error:", error);
+        }
       }, 1200);
     }
   };
