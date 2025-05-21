@@ -8,12 +8,14 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams } from 'expo-router';
 import Swiper from 'react-native-swiper';
 import {
-  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp
+  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc
 } from 'firebase/firestore';
 import { db, auth } from '../../../firebaseConfig';
 import { Timestamp } from 'firebase/firestore';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Constants from 'expo-constants';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../../firebaseConfig'; // adjust import path
 
 
 type Message = {
@@ -140,46 +142,75 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
     }, 1200);
   };
 
+  const uploadImageAsync = async (uri: string, chatId: string) => {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+
+    const filename = `chats/${chatId}/${Date.now()}.jpg`;
+    const storageRef = ref(storage, filename);
+
+    await uploadBytes(storageRef, blob);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+  };
+
   const handleSendImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.6,
     });
-
+  
     if (!result.canceled && result.assets?.length > 0) {
-      const uri = result.assets[0].uri;
-      setImages(prev => [...prev, uri]);
-
-      await addDoc(collection(db, `chats/${chatId}/messages`), {
-        text: "[Image]",
-        image: uri,
-        createdAt: serverTimestamp(),
-        user: auth.currentUser?.email || "anonymous",
-        userId: auth.currentUser?.uid,
-        sender: "user"
-      });
-
-      setTimeout(async () => {
-        try {
-          const result = await getGeminiResponse(`Please analyze this image: ${uri}`);
-          const response = result;
-          console.log("Gemini response:", response);
-
-          await addDoc(collection(db, `chats/${chatId}/messages`), {
-            text: response,
-            createdAt: serverTimestamp(),
-            user: "AI Bot",
-            userId: auth.currentUser?.uid,
-            sender: "bot"
-          });
-        } catch (error) {
-          console.error("Gemini callable error:", error);
-        }
-      }, 1200);
+      const localUri = result.assets[0].uri;
+  
+      try {
+        // 🔼 Upload image to Firebase Storage
+        const imageUrl = await uploadImageAsync(localUri, chatId);
+  
+        // 🖼️ Preview in local swiper (optional)
+        setImages(prev => [...prev, imageUrl]);
+  
+        // 📨 Store image message in Firestore
+        await addDoc(collection(db, `chats/${chatId}/messages`), {
+          text: "[Image]",
+          image: imageUrl,
+          createdAt: serverTimestamp(),
+          user: auth.currentUser?.email || "anonymous",
+          userId: auth.currentUser?.uid,
+          sender: "user"
+        });
+  
+        await updateDoc(doc(db, `chats/${chatId}`), {
+          last_message_at: serverTimestamp()
+        });
+  
+        // 🤖 Gemini generates response based on image URL
+        setTimeout(async () => {
+          try {
+            const result = await getGeminiResponse(`Please analyze this image: ${imageUrl}`);
+            const response = result;
+  
+            await addDoc(collection(db, `chats/${chatId}/messages`), {
+              text: response,
+              createdAt: serverTimestamp(),
+              user: "AI Bot",
+              userId: auth.currentUser?.uid,
+              sender: "bot"
+            });
+  
+            await updateDoc(doc(db, `chats/${chatId}`), {
+              last_message_at: serverTimestamp()
+            });
+          } catch (error) {
+            console.error("Gemini callable error:", error);
+          }
+        }, 1200);
+      } catch (uploadError) {
+        console.error("Image upload failed:", uploadError);
+      }
     }
   };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -207,7 +238,7 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
             )}
           />
 
-          {images.length > 0 && (
+          {/* {images.length > 0 && (
             <View style={{ height: 200 }}>
               <Swiper showsButtons loop={false}>
                 {images.map((imgUri, index) => (
@@ -219,7 +250,7 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
                 ))}
               </Swiper>
             </View>
-          )}
+          )} */}
 
           <View style={styles.inputContainer}>
             <Button title="📷" onPress={handleSendImage} />

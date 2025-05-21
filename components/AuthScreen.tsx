@@ -38,6 +38,7 @@ export default function AuthScreen() {
     try {
       if (mode === 'login') {
         await signInWithEmailAndPassword(auth, email, password);
+        resetForm();
         router.push('/dashboard');  // redirect on login
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -53,12 +54,7 @@ export default function AuthScreen() {
         });
 
         setMode('login');
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
-        setFirstName('');
-        setLastName('');
-        setPhoneNumber('');
+        resetForm();
         setError("Account created! Please log in.");
       }
     } catch (err: any) {
@@ -66,8 +62,18 @@ export default function AuthScreen() {
     }
   };
 
+  const resetForm = () => {
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    setFirstName('');
+    setLastName('');
+    setPhoneNumber('');
+  };
+
   const toggleMode = () => {
     setMode(mode === 'login' ? 'signup' : 'login');
+    resetForm();
     setError('');
   };
 

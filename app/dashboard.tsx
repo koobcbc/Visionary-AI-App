@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { collection, addDoc, getDoc, deleteDoc, serverTimestamp, onSnapshot, query, orderBy, where, doc } from 'firebase/firestore';
+import { collection, addDoc, getDoc, deleteDoc, getDocs, updateDoc, limit, serverTimestamp, onSnapshot, query, orderBy, where, doc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { getAuth } from 'firebase/auth';
 import { SwipeListView } from 'react-native-swipe-list-view';
@@ -55,7 +55,7 @@ export default function Dashboard() {
     const q = query(
       collection(db, "chats"),
       where("userId", "==", user.uid),
-      orderBy("createdAt", "desc")
+      orderBy("last_message_at", "desc")
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -149,7 +149,7 @@ export default function Dashboard() {
             >
               <Text style={styles.chatTitle}>{item.title}</Text>
               <Text style={styles.timestamp}>
-                {item.createdAt?.toDate().toLocaleString() || "Unknown"}
+                {item.last_message_at?.toDate().toLocaleString() || "Unknown"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -175,45 +175,85 @@ export default function Dashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f2f2f7', paddingTop: 50, paddingHorizontal: 20 },
-  header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 },
+  container: {
+    flex: 1,
+    backgroundColor: '#f9fafe',
+    paddingTop: 50,
+    paddingHorizontal: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
   avatar: {
-    backgroundColor: '#cdd5ec',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    backgroundColor: '#9db2f2',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontWeight: 'bold', color: '#3b3b3b', fontSize: 16 },
+  avatarText: {
+    fontWeight: '700',
+    color: '#fff',
+    fontSize: 16,
+  },
   menu: {
-    backgroundColor: '#fff', borderRadius: 6, padding: 6,
-    position: 'absolute', top: 45, left: 0, width: 120,
-    borderWidth: 1, borderColor: '#ccc', zIndex: 10,
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    position: 'absolute',
+    top: 48,
+    left: 0,
+    width: 140,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    borderWidth: 1,
+    borderColor: '#e2e6ea',
+  },
+  menuItem: {
+    paddingVertical: 8,
+    fontSize: 16,
+    color: '#333',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2c3e50',
+  },
+  chatCard: {
+    backgroundColor: '#eaf4fb',
+    padding: 16,
+    borderRadius: 10,
+    justifyContent: 'space-between',
+    flexDirection: 'column',
+  },
+  chatTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: 6,
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#7f8c8d',
+  },
+  rowFront: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    marginBottom: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
     shadowOffset: { width: 0, height: 2 },
   },
-  menuItem: { paddingVertical: 6, paddingHorizontal: 10, fontSize: 16 },
-  headerTitle: { fontSize: 18, fontWeight: '600', marginTop: 5 },
-  chatList: { marginTop: 10 },
-  chatCard: {
-    backgroundColor: '#d8eff5',
-    padding: 14,
-    borderWidth: 0.5,
-    borderColor: '#bcd3df',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderRadius: 6,
-  },
-  chatTitle: { fontWeight: 'bold' },
-  timestamp: { color: '#555' },
-  rowFront: {
-    backgroundColor: '#fff',           
-    borderRadius: 6,
-    marginBottom: 10,
-    overflow: 'hidden',              
-  },
-  
   rowBack: {
     alignItems: 'center',
     backgroundColor: '#ff3b30',
@@ -221,8 +261,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     paddingRight: 20,
-    borderRadius: 6,
-    marginBottom: 10,
+    borderRadius: 10,
+    marginBottom: 12,
   },
   deleteButton: {
     alignItems: 'center',
@@ -230,9 +270,8 @@ const styles = StyleSheet.create({
     width: 75,
     height: '100%',
   },
-  
   deleteText: {
-    color: 'white',
+    color: '#fff',
     fontWeight: 'bold',
   },
 });
