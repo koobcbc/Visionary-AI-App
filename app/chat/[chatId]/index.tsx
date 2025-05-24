@@ -11,18 +11,7 @@ export default function ChatSwiper() {
 
   return (
     <View style={styles.wrapper}>
-      <Swiper
-        loop={false}
-        showsPagination
-        index={0}
-        dotStyle={styles.dot}
-        activeDotStyle={styles.activeDot}
-        paginationStyle={styles.pagination}
-      >
-        <ChatScreen chatId={chatId as string} />
-        <SummaryScreen chatId={chatId as string} />
-        <DoctorsScreen chatId={chatId as string} />
-      </Swiper>
+      <ChatScreen chatId={chatId as string} />
     </View>
   );
 }

@@ -130,7 +130,6 @@ export default function DoctorsScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Doctors Nearby</Text>
       <Text style={styles.subTitle}>Specialty: {SPECIALTY}</Text>
 
       {locationPermissionDenied && (

@@ -4,6 +4,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { getAuth } from 'firebase/auth';
 import { create } from 'react-test-renderer';
+import Header from '../components/Header';
 
 const auth = getAuth();
 
@@ -67,33 +68,37 @@ export default function AccountScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>First Name</Text>
-      <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} />
-      <Text style={styles.label}>Last Name</Text>
-      <TextInput style={styles.input} value={lastName} onChangeText={setLastName} />
-      <Text style={styles.label}>Phone</Text>
-      <TextInput
-        style={[styles.input, styles.readOnlyInput]}
-        value={phone}
-        editable={false}
-        selectTextOnFocus={false}
-      />
+      <Header title="Account" />
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>First Name</Text>
+        <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} />
+        <Text style={styles.label}>Last Name</Text>
+        <TextInput style={styles.input} value={lastName} onChangeText={setLastName} />
+        <Text style={styles.label}>Phone</Text>
+        <TextInput
+          style={[styles.input, styles.readOnlyInput]}
+          value={phone}
+          editable={false}
+          selectTextOnFocus={false}
+        />
 
-      <Text style={styles.label}>Email</Text>
-      <TextInput
-        style={[styles.input, styles.readOnlyInput]}
-        value={email}
-        editable={false}
-        selectTextOnFocus={false}
-      />
-      <Text style={styles.note}>Contact support to update phone or email.</Text>
-      <Button title="Update Profile" onPress={handleUpdate} />
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          style={[styles.input, styles.readOnlyInput]}
+          value={email}
+          editable={false}
+          selectTextOnFocus={false}
+        />
+        <Text style={styles.note}>Contact support to update phone or email.</Text>
+        <Button title="Update Profile" onPress={handleUpdate} />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f2f2f7', paddingTop: 50, paddingHorizontal: 20 },
+  container: { flex: 1, backgroundColor: '#f2f2f7' },
+  inputContainer: { paddingHorizontal: 20 },
   label: { marginTop: 10, marginBottom: 4, fontWeight: 'bold' },
   input: {
     borderWidth: 1, borderColor: '#ccc',

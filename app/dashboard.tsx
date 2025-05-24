@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { collection, addDoc, getDoc, deleteDoc, getDocs, updateDoc, limit, serverTimestamp, onSnapshot, query, orderBy, where, doc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signOut } from 'firebase/auth';
 import { SwipeListView } from 'react-native-swipe-list-view';
 import * as Location from 'expo-location';
 
@@ -71,6 +71,15 @@ export default function Dashboard() {
   
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.replace('/'); // redirect to login or home
+    } catch (error) {
+      Alert.alert("Logout Failed", "An error occurred while logging out.");
+    }
+  };
+
   const handleNewChat = async () => {
     try {
       const user = auth.currentUser;
@@ -126,6 +135,9 @@ export default function Dashboard() {
               <TouchableOpacity onPress={() => Alert.alert("Settings clicked")}>
                 <Text style={styles.menuItem}>Settings</Text>
               </TouchableOpacity>
+              <TouchableOpacity onPress={handleLogout}>
+                <Text style={styles.menuItem}>Logout</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -178,14 +190,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafe',
-    paddingTop: 50,
     paddingHorizontal: 20,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    paddingVertical: 12,
   },
   avatar: {
     backgroundColor: '#9db2f2',
@@ -223,7 +234,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#2c3e50',
   },

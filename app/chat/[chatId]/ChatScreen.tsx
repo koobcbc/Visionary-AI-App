@@ -1,22 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TextInput, Button, FlatList, StyleSheet,
-  KeyboardAvoidingView, Platform, TouchableWithoutFeedback,
-  Keyboard, Image
+  View, Text, TextInput, FlatList, StyleSheet,
+  KeyboardAvoidingView, Platform, Image, TouchableOpacity, Animated, Dimensions, ActionSheetIOS, Alert, TouchableWithoutFeedback, Keyboard, ScrollView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams } from 'expo-router';
-import Swiper from 'react-native-swiper';
-import {
-  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc
-} from 'firebase/firestore';
-import { db, auth } from '../../../firebaseConfig';
-import { Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { db, auth, storage } from '../../../firebaseConfig';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Constants from 'expo-constants';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../../../firebaseConfig'; // adjust import path
+import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import SummaryScreen from './SummaryScreen';
+import DoctorsScreen from './DoctorsScreen';
+import Markdown from 'react-native-markdown-display';
+import { LegendList } from '@legendapp/list';
+import { LegendListMethods } from '@legendapp/list';
 
+
+
+const { height: screenHeight } = Dimensions.get('window');
 
 type Message = {
   id: string;
@@ -29,91 +32,63 @@ type Message = {
 };
 
 export default function ChatScreen({ chatId }: { chatId: string }) {
-//   const { chatId } = useLocalSearchParams();
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [expandedCard, setExpandedCard] = useState<'summary' | 'doctors' | null>(null);
+  const slideAnim = useRef(new Animated.Value(300)).current;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const legendListRef = useRef<LegendListMethods>(null);
+  const router = useRouter();
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
-  const flatListRef = useRef<FlatList>(null);
-
-  // console.log("user", auth.currentUser?.email)
   useEffect(() => {
     if (!chatId) return;
-
-    const q = query(
-      collection(db, `chats/${chatId}/messages`),
-      orderBy('createdAt', 'asc')
-    );
-
+    const q = query(collection(db, `chats/${chatId}/messages`), orderBy('createdAt', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
       setMessages(msgs);
-      flatListRef.current?.scrollToEnd({ animated: true });
     });
-
     return () => unsubscribe();
   }, [chatId]);
 
   useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100); // slight delay to ensure layout has updated
+    if (isAtBottom && legendListRef.current) {
+      legendListRef.current?.scrollToEnd({ animated: true });
     }
-  }, [messages]);
+  }, [messages])
 
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => {
-      requestAnimationFrame(() => {
-        flatListRef.current?.scrollToEnd({ animated: false });
-      });
-    });
-    return () => showSub.remove();
-  }, []);
+  const openDrawer = () => {
+    setDrawerVisible(true);
+    Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+  };
 
-  const fakeBotResponse = (msg: string, isImage = false) =>
-    isImage ? "Thanks for the image! We'll review it shortly." :
-      msg.toLowerCase().includes("hello") ? "Hi there! How can I help you?" :
-        "I'm a demo bot responding to your message.";
-
-  // const app = initializeApp(firebaseConfig);
-  // const functions = getFunctions(app);
-  // const getGeminiResponse = httpsCallable(functions, "generateFromGemini");
+  const closeDrawer = () => {
+    Animated.timing(slideAnim, { toValue: 300, duration: 300, useNativeDriver: true }).start(() => setDrawerVisible(false));
+  };
 
   const API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY;
   const genAI = new GoogleGenerativeAI(API_KEY);
-  // Function to generate a response from Gemini Pro
-  async function getGeminiResponse(msg: string, isImage = false) {
+
+  async function getGeminiResponse(msg: string) {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
-
       const chat = model.startChat({
         history: [
-          {
-            role: "user",
-            parts: [{ text: "Hi" }],
-          },
-          {
-            role: "model",
-            parts: [{ text: "Hello! How can I assist you today?" }],
-          },
-        ],
+          { role: "user", parts: [{ text: "Hi" }] },
+          { role: "model", parts: [{ text: "Hello! How can I assist you today?" }] },
+        ]
       });
-
       const result = await chat.sendMessage(msg);
-      const response = result.response;
-      const text = response.text();
-      console.log("Gemini says:", text);
-      return text;
+      return result.response.text();
     } catch (error) {
-      console.error("Error in Gemini API call:", error);
+      console.error("Gemini error:", error);
       return "Sorry, something went wrong.";
     }
   }
 
   const handleSend = async () => {
     if (!input.trim()) return;
-
     await addDoc(collection(db, `chats/${chatId}/messages`), {
       text: input,
       createdAt: serverTimestamp(),
@@ -121,40 +96,79 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
       userId: auth.currentUser?.uid,
       sender: "user"
     });
-
     setInput('');
-
     setTimeout(async () => {
-      try {
-        const result = await getGeminiResponse(input);
-        const response = result;
-        console.log("Gemini response:", response);
-        await addDoc(collection(db, `chats/${chatId}/messages`), {
-          text: response,
-          createdAt: serverTimestamp(),
-          user: "AI Bot",
-          userId: auth.currentUser?.uid,
-          sender: "bot"
-        });
-      } catch (error) {
-        console.error("Gemini callable error:", error);
-      }
+      const response = await getGeminiResponse(input);
+      await addDoc(collection(db, `chats/${chatId}/messages`), {
+        text: response,
+        createdAt: serverTimestamp(),
+        user: "AI Bot",
+        userId: auth.currentUser?.uid,
+        sender: "bot"
+      });
     }, 1200);
   };
 
   const uploadImageAsync = async (uri: string, chatId: string) => {
     const response = await fetch(uri);
     const blob = await response.blob();
-
     const filename = `chats/${chatId}/${Date.now()}.jpg`;
     const storageRef = ref(storage, filename);
-
     await uploadBytes(storageRef, blob);
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
+    return await getDownloadURL(storageRef);
   };
 
-  const handleSendImage = async () => {
+  const handleSendImage = () => {
+    const options = ['Take Photo', 'Choose from Library', 'Cancel'];
+    const cancelButtonIndex = 2;
+  
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex,
+        },
+        async (buttonIndex) => {
+          if (buttonIndex === 0) {
+            await launchCamera();
+          } else if (buttonIndex === 1) {
+            await launchImageLibrary();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Send Image',
+        'Choose an option',
+        [
+          { text: 'Take Photo', onPress: launchCamera },
+          { text: 'Choose from Library', onPress: launchImageLibrary },
+          { text: 'Cancel', style: 'cancel' },
+        ],
+        { cancelable: true }
+      );
+    }
+  };
+
+  const launchCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert("Permission Denied", "Camera permission is required to take photos.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.6,
+    });
+
+    if (!result.canceled && result.assets?.length > 0) {
+      await handleImageUpload(result.assets[0].uri);
+    }
+  };
+  
+  const launchImageLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -162,131 +176,201 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
     });
   
     if (!result.canceled && result.assets?.length > 0) {
-      const localUri = result.assets[0].uri;
+      await handleImageUpload(result.assets[0].uri);
+    }
+  };
+
+  const handleImageUpload = async (localUri: string) => {
+    try {
+      const imageUrl = await uploadImageAsync(localUri, chatId);
+      setImages(prev => [...prev, imageUrl]);
   
-      try {
-        // 🔼 Upload image to Firebase Storage
-        const imageUrl = await uploadImageAsync(localUri, chatId);
+      await addDoc(collection(db, `chats/${chatId}/messages`), {
+        text: "[Image]",
+        image: imageUrl,
+        createdAt: serverTimestamp(),
+        user: auth.currentUser?.email || "anonymous",
+        userId: auth.currentUser?.uid,
+        sender: "user"
+      });
   
-        // 🖼️ Preview in local swiper (optional)
-        setImages(prev => [...prev, imageUrl]);
+      await updateDoc(doc(db, `chats/${chatId}`), {
+        last_message_at: serverTimestamp()
+      });
   
-        // 📨 Store image message in Firestore
+      setTimeout(async () => {
+        const response = await getGeminiResponse(`Please analyze this image: ${imageUrl}`);
         await addDoc(collection(db, `chats/${chatId}/messages`), {
-          text: "[Image]",
-          image: imageUrl,
+          text: response,
           createdAt: serverTimestamp(),
-          user: auth.currentUser?.email || "anonymous",
+          user: "AI Bot",
           userId: auth.currentUser?.uid,
-          sender: "user"
+          sender: "bot"
         });
   
         await updateDoc(doc(db, `chats/${chatId}`), {
           last_message_at: serverTimestamp()
         });
-  
-        // 🤖 Gemini generates response based on image URL
-        setTimeout(async () => {
-          try {
-            const result = await getGeminiResponse(`Please analyze this image: ${imageUrl}`);
-            const response = result;
-  
-            await addDoc(collection(db, `chats/${chatId}/messages`), {
-              text: response,
-              createdAt: serverTimestamp(),
-              user: "AI Bot",
-              userId: auth.currentUser?.uid,
-              sender: "bot"
-            });
-  
-            await updateDoc(doc(db, `chats/${chatId}`), {
-              last_message_at: serverTimestamp()
-            });
-          } catch (error) {
-            console.error("Gemini callable error:", error);
-          }
-        }, 1200);
-      } catch (uploadError) {
-        console.error("Image upload failed:", uploadError);
-      }
+      }, 1200);
+    } catch (uploadError) {
+      console.error("Image upload failed:", uploadError);
     }
   };
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={80}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={{ flex: 1 }}>
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            keyExtractor={item => item.id}
-            contentContainerStyle={styles.messages}
-            renderItem={({ item }) => (
-              <View style={[
-                styles.messageBubble,
-                item.sender === 'bot' ? styles.botBubble : styles.userBubble
-              ]}>
-                <Text style={styles.sender}>{item.user}</Text>
-                {item.image && (
-                  <Image source={{ uri: item.image }} style={styles.imagePreview} />
-                )}
-                <Text>{item.text}</Text>
-              </View>
-            )}
-          />
 
-          {/* {images.length > 0 && (
-            <View style={{ height: 200 }}>
-              <Swiper showsButtons loop={false}>
-                {images.map((imgUri, index) => (
-                  <Image
-                    key={index}
-                    source={{ uri: imgUri }}
-                    style={{ width: '100%', height: 180, borderRadius: 12 }}
-                  />
-                ))}
-              </Swiper>
-            </View>
-          )} */}
-
-          <View style={styles.inputContainer}>
-            <Button title="📷" onPress={handleSendImage} />
-            <TextInput
-              style={styles.input}
-              placeholder="Type a message..."
-              value={input}
-              onChangeText={setInput}
-            />
-            <Button title="Send" onPress={handleSend} />
+  const renderExpandableCard = (title: string, key: 'summary' | 'doctors', Component: React.ComponentType<any>) => (
+    <TouchableOpacity onPress={() => setExpandedCard(prev => prev === key ? null : key)}>
+      <View style={[styles.card, expandedCard === key && { height: screenHeight * 0.65 }]}> 
+        <Text style={styles.cardTitle}>{title}</Text>
+        {expandedCard === key ? (
+          <View style={styles.expandedCardContent}>
+            <Component chatId={chatId} />
           </View>
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+        ) : (
+          <Text style={styles.cardText}>{key === 'summary' ? 'AI-generated summary of your recent chat.' : 'Find nearby providers for follow-up care.'}</Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
+  const markdownStyles = {
+    body: {
+      fontSize: 15,
+      color: '#2c3e50',
+    },
+    link: {
+      color: '#1e90ff',
+    },
+    code_inline: {
+      backgroundColor: '#eee',
+      padding: 4,
+      borderRadius: 4,
+      fontFamily: 'Courier',
+    },
+    code_block: {
+      backgroundColor: '#eee',
+      padding: 10,
+      borderRadius: 8,
+      fontFamily: 'Courier',
+    },
+    heading1: {
+      fontSize: 22,
+      fontWeight: 'bold',
+    },
+    // add more if needed
+  };
+
+  return (
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={80}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.header}>
+              <TouchableOpacity onPress={() => router.replace('/dashboard')}>
+                <Ionicons name="chevron-back" size={28} color="#000" />
+              </TouchableOpacity>
+              <Text style={styles.chatTitle}>Chat</Text>
+              <View style={styles.headerIcons}>
+                <TouchableOpacity onPress={openDrawer}>
+                  <MaterialIcons name="more-vert" size={24} color="#000" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <LegendList
+              data={messages}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View style={[styles.messageBubble, item.sender === 'bot' ? styles.botBubble : styles.userBubble]}>
+                  {item.sender === 'bot' ? <Text style={styles.sender}>{item.user}</Text> : null}
+                  {item.image && <Image source={{ uri: item.image }} style={styles.imagePreview} />}
+                  <Markdown style={markdownStyles}>{item.text}</Markdown>
+                </View>
+              )}
+              estimatedItemSize={100}
+              alignItemsAtEnd
+              maintainScrollAtEnd
+              maintainScrollAtEndThreshold={0.5}
+              maintainVisibleContentPosition
+              contentContainerStyle={styles.messages}
+            />
+
+            <View style={styles.inputContainer}>
+              <TouchableOpacity onPress={handleSendImage} style={styles.iconButton}>
+                <Feather name="camera" size={22} color="#333" />
+              </TouchableOpacity>
+              <TextInput style={styles.input} placeholder="Type a message..." value={input} onChangeText={setInput} />
+              <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
+                <Text style={styles.sendText}>Send</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {drawerVisible && (
+            <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
+              <View style={styles.drawerHeader}>
+                <TouchableOpacity onPress={closeDrawer}>
+                  <Ionicons name="chevron-forward" size={28} color="#000" />
+                </TouchableOpacity>
+                <Text style={styles.drawerTitle}>Back to Chat</Text>
+              </View>
+
+              <View style={{ flex: 1 }}>
+                {renderExpandableCard('Summary', 'summary', SummaryScreen)}
+                {renderExpandableCard('Doctors Near Me', 'doctors', DoctorsScreen)}
+                <TouchableOpacity style={styles.leaveButton} onPress={() => {}}>
+                  <Text style={styles.leaveButtonText}>Leave Chat</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          )}
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f0f0f0' },
-  messages: { padding: 10 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#f9fafe',
+  },
+  chatTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  container: { flex: 1, backgroundColor: '#f9fafe' },
+  messages: { padding: 12, paddingBottom: 60 },
   messageBubble: {
-    maxWidth: '75%',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 8,
+    maxWidth: '80%',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
   },
   userBubble: {
     backgroundColor: '#d2ecf9',
     alignSelf: 'flex-end',
-    marginLeft: 40,
+    marginLeft: 50,
     borderTopRightRadius: 0,
+    paddingTop: 6,
+    paddingBottom: 6
   },
   botBubble: {
     backgroundColor: '#ffe9c9',
     alignSelf: 'flex-start',
-    marginRight: 40,
+    marginRight: 50,
     borderTopLeftRadius: 0,
   },
   sender: {
@@ -294,28 +378,133 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     color: '#333'
   },
+  messageText: {
+    fontSize: 15,
+    color: '#2c3e50'
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#ddd',
     backgroundColor: '#fff',
-    padding: 10
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   input: {
     flex: 1,
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 20,
+    borderRadius: 25,
     paddingHorizontal: 15,
     height: 40,
     marginHorizontal: 10,
-    backgroundColor: '#fff'
+    backgroundColor: '#fff',
+    color: '#000'
   },
   imagePreview: {
-    width: 180,
-    height: 180,
+    width: 200,
+    height: 200,
     borderRadius: 12,
-    marginBottom: 6
-  }
+    marginTop: 6,
+    marginBottom: 4
+  },
+  iconButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButton: {
+    backgroundColor: '#2c3e50',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  sendText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  drawer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: '100%',
+    backgroundColor: '#fff',
+    borderLeftWidth: 1,
+    borderLeftColor: '#ccc',
+    padding: 16,
+    zIndex: 10,
+    elevation: 5,
+  },
+  
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  
+  drawerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 10,
+  },
+  
+  drawerContent: {
+    flex: 1,
+  },
+  
+  drawerItem: {
+    fontSize: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+  },
+  card: {
+    backgroundColor: '#f1f1f1',
+    borderRadius: 16,
+    padding: 16,
+    marginVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  
+  cardText: {
+    fontSize: 14,
+    color: '#555',
+  },
+  
+  leaveButton: {
+    backgroundColor: '#ef5350',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  
+  leaveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  expandedCardContent: {
+    flex: 1,
+    marginTop: 12,
+    padding: 8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+  },
 });

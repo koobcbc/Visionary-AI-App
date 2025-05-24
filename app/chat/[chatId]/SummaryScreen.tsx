@@ -4,7 +4,6 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 export default function SummaryScreen({ chatId }: { chatId: string }) {
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Summary</Text>
 
       <View style={styles.row}>
         <Text style={styles.heading}>Diagnosis</Text>
