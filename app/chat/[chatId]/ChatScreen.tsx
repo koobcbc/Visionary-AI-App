@@ -14,10 +14,6 @@ import { useRouter } from 'expo-router';
 import SummaryScreen from './SummaryScreen';
 import DoctorsScreen from './DoctorsScreen';
 import Markdown from 'react-native-markdown-display';
-import { LegendList } from '@legendapp/list';
-import { LegendListMethods } from '@legendapp/list';
-
-
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -38,10 +34,24 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [images, setImages] = useState<string[]>([]);
-  const legendListRef = useRef<LegendListMethods>(null);
+  const flatListRef = useRef<FlatList>(null);
   const router = useRouter();
-  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const scrollOffset = useRef(0);
+  const contentHeight = useRef(0);
+  const listHeight = useRef(0);
 
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      flatListRef.current?.scrollToEnd({ animated: false });
+    });
+  
+    return () => {
+      keyboardDidShowListener.remove();
+    };
+  }, []);
+  
   useEffect(() => {
     if (!chatId) return;
     const q = query(collection(db, `chats/${chatId}/messages`), orderBy('createdAt', 'asc'));
@@ -53,8 +63,8 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
   }, [chatId]);
 
   useEffect(() => {
-    if (isAtBottom && legendListRef.current) {
-      legendListRef.current?.scrollToEnd({ animated: true });
+    if (flatListRef.current) {
+      flatListRef.current.scrollToEnd({ animated: true });
     }
   }, [messages])
 
@@ -259,72 +269,113 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
     // add more if needed
   };
 
+  console.log("flatListRef", flatListRef)
   return (
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={80}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={50}>
           <View style={{ flex: 1 }}>
-          <View style={{ flex: 1 }}>
-            <View style={styles.header}>
-              <TouchableOpacity onPress={() => router.replace('/dashboard')}>
-                <Ionicons name="chevron-back" size={28} color="#000" />
-              </TouchableOpacity>
-              <Text style={styles.chatTitle}>Chat</Text>
-              <View style={styles.headerIcons}>
-                <TouchableOpacity onPress={openDrawer}>
-                  <MaterialIcons name="more-vert" size={24} color="#000" />
+            <View style={{ flex: 1 }}>
+              {/* Header section */}
+              <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.replace('/dashboard')}>
+                  <Ionicons name="chevron-back" size={28} color="#000" />
                 </TouchableOpacity>
-              </View>
-            </View>
-
-            <LegendList
-              data={messages}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={[styles.messageBubble, item.sender === 'bot' ? styles.botBubble : styles.userBubble]}>
-                  {item.sender === 'bot' ? <Text style={styles.sender}>{item.user}</Text> : null}
-                  {item.image && <Image source={{ uri: item.image }} style={styles.imagePreview} />}
-                  <Markdown style={markdownStyles}>{item.text}</Markdown>
+                <Text style={styles.chatTitle}>Chat</Text>
+                <View style={styles.headerIcons}>
+                  <TouchableOpacity onPress={openDrawer}>
+                    <MaterialIcons name="more-vert" size={24} color="#000" />
+                  </TouchableOpacity>
                 </View>
+              </View>
+
+              {/* Message list */}
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <FlatList
+                ref={flatListRef}
+                data={messages}
+                keyExtractor={item => item.id}
+                contentContainerStyle={styles.messages}
+                keyboardShouldPersistTaps="handled"
+                onScroll={(event) => {
+                  // Scroll tracking logic
+                  const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+
+                  scrollOffset.current = contentOffset.y;
+                  contentHeight.current = contentSize.height;
+                  listHeight.current = layoutMeasurement.height;
+
+                  const paddingToBottom = 30;
+                  const isNearBottom = layoutMeasurement.height + contentOffset.y +300 >= contentSize.height - paddingToBottom;
+
+                  setShowScrollToBottom(!isNearBottom);
+                }}
+                scrollEventThrottle={100}
+                renderItem={({ item }) => (
+                  <View style={{ width: '100%' }}>
+                    <View style={[styles.messageBubble, item.sender === 'bot' ? styles.botBubble : styles.userBubble]}>
+                      {item.sender === 'bot' ? <Text style={styles.sender}>{item.user}</Text> : null}
+                      {item.image && <Image source={{ uri: item.image }} style={styles.imagePreview} />}
+                      <Markdown style={markdownStyles}>{item.text}</Markdown>
+                    </View>
+                  </View>
+                )}
+                onContentSizeChange={() => {
+                  flatListRef.current?.scrollToEnd({ animated: false });
+                }}
+                onLayout={(event) => {
+                  listHeight.current = event.nativeEvent.layout.height;
+                }}
+              />
+              </TouchableWithoutFeedback>
+
+              {/* Scroll to bottom button */}
+              {showScrollToBottom && (
+                <TouchableOpacity
+                onPress={() => {
+                  if (flatListRef.current && contentHeight.current && listHeight.current) {
+                    flatListRef.current.scrollToOffset({
+                      offset: Math.max(contentHeight.current - listHeight.current, 0),
+                      animated: true,
+                    });
+                  }
+                }}
+                  style={styles.scrollToBottomButton}
+                >
+                  <Ionicons name="chevron-down" size={28} color="#fff" />
+                </TouchableOpacity>
               )}
-              estimatedItemSize={100}
-              alignItemsAtEnd
-              maintainScrollAtEnd
-              maintainScrollAtEndThreshold={0.5}
-              maintainVisibleContentPosition
-              contentContainerStyle={styles.messages}
-            />
 
-            <View style={styles.inputContainer}>
-              <TouchableOpacity onPress={handleSendImage} style={styles.iconButton}>
-                <Feather name="camera" size={22} color="#333" />
-              </TouchableOpacity>
-              <TextInput style={styles.input} placeholder="Type a message..." value={input} onChangeText={setInput} />
-              <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
-                <Text style={styles.sendText}>Send</Text>
-              </TouchableOpacity>
+              {/* Input field section */}
+              <View style={styles.inputContainer}>
+                <TouchableOpacity onPress={handleSendImage} style={styles.iconButton}>
+                  <Feather name="camera" size={22} color="#333" />
+                </TouchableOpacity>
+                <TextInput style={styles.input} placeholder="Type a message..." value={input} onChangeText={setInput} />
+                <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
+                  <Text style={styles.sendText}>Send</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
 
-          {drawerVisible && (
-            <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
-              <View style={styles.drawerHeader}>
-                <TouchableOpacity onPress={closeDrawer}>
-                  <Ionicons name="chevron-forward" size={28} color="#000" />
-                </TouchableOpacity>
-                <Text style={styles.drawerTitle}>Back to Chat</Text>
-              </View>
+            {/* Drawer panel */}
+            {drawerVisible && (
+              <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
+                <View style={styles.drawerHeader}>
+                  <TouchableOpacity onPress={closeDrawer}>
+                    <Ionicons name="chevron-forward" size={28} color="#000" />
+                  </TouchableOpacity>
+                  <Text style={styles.drawerTitle}>Back to Chat</Text>
+                </View>
 
-              <View style={{ flex: 1 }}>
-                {renderExpandableCard('Summary', 'summary', SummaryScreen)}
-                {renderExpandableCard('Doctors Near Me', 'doctors', DoctorsScreen)}
-                <TouchableOpacity style={styles.leaveButton} onPress={() => {}}>
-                  <Text style={styles.leaveButtonText}>Leave Chat</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          )}
+                <View style={{ flex: 1 }}>
+                  {renderExpandableCard('Summary', 'summary', SummaryScreen)}
+                  {renderExpandableCard('Doctors Near Me', 'doctors', DoctorsScreen)}
+                  <TouchableOpacity style={styles.leaveButton} onPress={() => {}}>
+                    <Text style={styles.leaveButtonText}>Leave Chat</Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            )}
           </View>
-        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
   );
 }
@@ -348,7 +399,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   container: { flex: 1, backgroundColor: '#f9fafe' },
-  messages: { padding: 12, paddingBottom: 60 },
+  messages: { padding: 12, paddingBottom: 40 },
   messageBubble: {
     maxWidth: '80%',
     padding: 12,
@@ -506,5 +557,22 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: '#fff',
     borderRadius: 12,
+  },
+  scrollToBottomButton: {
+    position: 'absolute',
+    right: 20,
+    bottom: 90,
+    backgroundColor: '#2c3e50',
+    borderRadius: 30,
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 10,
   },
 });
