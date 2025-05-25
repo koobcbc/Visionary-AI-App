@@ -13,10 +13,6 @@ import * as Location from 'expo-location';
 
 const auth = getAuth();
 
-// export const metadata = {
-//   title: "Dashboard"
-// };
-
 export default function Dashboard() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [chats, setChats] = useState<any[]>([]);
@@ -33,12 +29,11 @@ export default function Dashboard() {
         );
         return;
       }
-  
+
       const location = await Location.getCurrentPositionAsync({});
       console.log("User location:", location.coords);
-      // Optionally store in state or Firestore
     })();
-    
+
     const user = auth.currentUser;
     if (!user) return;
 
@@ -67,14 +62,12 @@ export default function Dashboard() {
     });
 
     return () => unsubscribe();
-
-  
   }, []);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      router.replace('/'); // redirect to login or home
+      router.replace('/');
     } catch (error) {
       Alert.alert("Logout Failed", "An error occurred while logging out.");
     }
@@ -88,16 +81,21 @@ export default function Dashboard() {
       const docRef = await addDoc(collection(db, "chats"), {
         title: "New Chat",
         userId: user.uid,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        last_message_at: serverTimestamp(),
       });
 
-      // Step 2: Add bot welcome message
       await addDoc(collection(db, `chats/${docRef.id}/messages`), {
         text: "Hi there! How can I assist you?",
         createdAt: serverTimestamp(),
         user: "AI Bot",
         userId: user.uid,
         sender: "bot"
+      });
+
+      const chatRef = doc(db, "chats", docRef.id);
+      await updateDoc(chatRef, {
+        last_message_at: serverTimestamp()
       });
 
       router.push(`/chat/${docRef.id}`);
@@ -110,14 +108,26 @@ export default function Dashboard() {
     router.push(`/chat/${chat.id}`);
   };
 
-  const handleDeleteChat = async (chatId: string) => {
-    try {
-      await deleteDoc(doc(db, "chats", chatId));
-      // Optionally: delete subcollection `messages` manually (Firebase doesn't auto-delete subcollections)
-      // You’d need recursive deletion via backend (Cloud Functions or Firebase CLI)
-    } catch (error) {
-      Alert.alert("Error", "Could not delete chat.");
-    }
+  const handleDeleteChat = (chatId: string) => {
+    Alert.alert(
+      "Delete Chat",
+      "Are you sure you want to delete this chat?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, "chats", chatId));
+            } catch (error) {
+              Alert.alert("Error", "Could not delete chat.");
+            }
+          }
+        }
+      ],
+      { cancelable: true }
+    );
   };
 
   return (
@@ -132,7 +142,7 @@ export default function Dashboard() {
               <TouchableOpacity onPress={() => router.push('/account')}>
                 <Text style={styles.menuItem}>Account</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => Alert.alert("Settings clicked")}>
+              <TouchableOpacity onPress={() => router.push('/settings')}>
                 <Text style={styles.menuItem}>Settings</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleLogout}>

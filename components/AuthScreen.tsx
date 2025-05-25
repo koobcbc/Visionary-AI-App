@@ -9,7 +9,8 @@ import {
   Keyboard,
   Platform,
   KeyboardAvoidingView,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  Alert
 } from 'react-native';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
@@ -31,7 +32,7 @@ export default function AuthScreen() {
     setError('');
 
     if (mode === 'signup' && password !== confirmPassword) {
-      setError('Passwords do not match.');
+      Alert.alert('Error', 'Passwords do not match.', [{ text: 'OK', style: 'destructive' }]);
       return;
     }
 
@@ -55,10 +56,14 @@ export default function AuthScreen() {
 
         setMode('login');
         resetForm();
-        setError("Account created! Please log in.");
+        Alert.alert(
+          'Account Created',
+          'Your account was successfully created! Please log in.',
+          [{ text: 'OK', style: 'default' }]
+        );
       }
     } catch (err: any) {
-      setError(err.message);
+      Alert.alert('Login/Signup Failed', err.message, [{ text: 'OK', style: 'destructive' }]);
     }
   };
 

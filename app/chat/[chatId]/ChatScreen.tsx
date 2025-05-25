@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, Image, TouchableOpacity, Animated, Dimensions, ActionSheetIOS, Alert, TouchableWithoutFeedback, Keyboard, ScrollView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db, auth, storage } from '../../../firebaseConfig';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Constants from 'expo-constants';
@@ -40,10 +40,14 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
   const scrollOffset = useRef(0);
   const contentHeight = useRef(0);
   const listHeight = useRef(0);
-
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const settingsSlideAnim = useRef(new Animated.Value(300)).current;
+  const [chatTitle, setChatTitle] = useState('Chat');
+  const [newTitle, setNewTitle] = useState('');
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      console.log("keyboard showing")
       flatListRef.current?.scrollToEnd({ animated: false });
     });
   
@@ -63,12 +67,27 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
   }, [chatId]);
 
   useEffect(() => {
+    if (!chatId) return;
+    const chatRef = doc(db, 'chats', chatId);
+  
+    const unsubscribe = onSnapshot(chatRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setChatTitle(data.title || 'Chat');
+      }
+    });
+  
+    return () => unsubscribe();
+  }, [chatId]);
+
+  useEffect(() => {
     if (flatListRef.current) {
       flatListRef.current.scrollToEnd({ animated: true });
     }
   }, [messages])
 
   const openDrawer = () => {
+    Keyboard.dismiss()
     setDrawerVisible(true);
     Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start();
   };
@@ -192,11 +211,13 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
 
   const handleImageUpload = async (localUri: string) => {
     try {
+      // Step 1: Upload to Firebase Storage
       const imageUrl = await uploadImageAsync(localUri, chatId);
       setImages(prev => [...prev, imageUrl]);
   
+      // Step 2: Add user message (image)
       await addDoc(collection(db, `chats/${chatId}/messages`), {
-        text: "[Image]",
+        text: "",
         image: imageUrl,
         createdAt: serverTimestamp(),
         user: auth.currentUser?.email || "anonymous",
@@ -208,22 +229,58 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
         last_message_at: serverTimestamp()
       });
   
-      setTimeout(async () => {
-        const response = await getGeminiResponse(`Please analyze this image: ${imageUrl}`);
-        await addDoc(collection(db, `chats/${chatId}/messages`), {
-          text: response,
-          createdAt: serverTimestamp(),
-          user: "AI Bot",
-          userId: auth.currentUser?.uid,
-          sender: "bot"
-        });
+      // Step 3: Send image to ML model for prediction
+      const formData = new FormData();
+      const fileName = localUri.split('/').pop() || 'image.jpg';
+      const fileType = fileName.split('.').pop();
   
-        await updateDoc(doc(db, `chats/${chatId}`), {
-          last_message_at: serverTimestamp()
-        });
-      }, 1200);
-    } catch (uploadError) {
-      console.error("Image upload failed:", uploadError);
+      formData.append('file', {
+        uri: localUri,
+        name: fileName,
+        type: `image/${fileType}`
+      });
+  
+      const mlResponse = await fetch('https://skin-disease-cv-model-139431081773.us-central1.run.app/predict', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+  
+      const prediction = await mlResponse.json();
+  
+      const rawPredictionText = `Prediction result: Class - ${prediction.predicted_class}, Confidence - ${(prediction.confidence * 100).toFixed(2)}%`;
+  
+      // Step 4: Use Gemini to turn prediction into a human-readable explanation
+      const geminiPrompt = `
+        The model detected: ${prediction.predicted_class}
+        Confidence level: ${(prediction.confidence * 100).toFixed(2)}%
+
+        Based on this, please provide a human-understandable response to the user, including:
+        - What this condition means in plain terms
+        - Whether they should be concerned
+        - If a follow-up with a healthcare provider is necessary
+
+        Remove all the unnecessary parts and give response so I can directly show the user as a message response.
+      `;
+  
+      const responseText = await getGeminiResponse(geminiPrompt);
+      print("responseText", responseText)
+      await addDoc(collection(db, `chats/${chatId}/messages`), {
+        text: responseText,
+        createdAt: serverTimestamp(),
+        user: "AI Bot",
+        userId: auth.currentUser?.uid,
+        sender: "bot"
+      });
+  
+      await updateDoc(doc(db, `chats/${chatId}`), {
+        last_message_at: serverTimestamp()
+      });
+  
+    } catch (error) {
+      console.error("Image upload or analysis failed:", error);
     }
   };
 
@@ -269,23 +326,83 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
     // add more if needed
   };
 
-  console.log("flatListRef", flatListRef)
+  const openSettingsDrawer = () => {
+    setSettingsVisible(true);
+    Animated.timing(settingsSlideAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+  
+  const closeSettingsDrawer = () => {
+    Animated.timing(settingsSlideAnim, {
+      toValue: 300,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setSettingsVisible(false));
+  };
+
+  const renameChatTitle = async () => {
+    if (!newTitle.trim()) return;
+  
+    try {
+      const chatRef = doc(db, 'chats', chatId);
+      await updateDoc(chatRef, {
+        title: newTitle.trim(),
+        updatedAt: serverTimestamp(),
+      });
+  
+      // Optional: Close settings drawer or show confirmation
+      // setSettingsVisible(false);
+      setNewTitle('');
+      Alert.alert("Success", "Chat title has been updated.");
+    } catch (error) {
+      console.error("Failed to rename chat:", error);
+    }
+  };
+
+  const handleDeleteChat = (chatId: string) => {
+    Alert.alert(
+      "Delete Chat",
+      "Are you sure you want to delete this chat?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, "chats", chatId));
+              router.replace('/dashboard')
+            } catch (error) {
+              Alert.alert("Error", "Could not delete chat.");
+            }
+          }
+        }
+      ],
+      { cancelable: true }
+    );
+  };
+
   return (
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={50}>
           <View style={{ flex: 1 }}>
             <View style={{ flex: 1 }}>
               {/* Header section */}
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
               <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.replace('/dashboard')}>
                   <Ionicons name="chevron-back" size={28} color="#000" />
                 </TouchableOpacity>
-                <Text style={styles.chatTitle}>Chat</Text>
+                <Text style={styles.chatTitle}>{chatTitle}</Text>
                 <View style={styles.headerIcons}>
                   <TouchableOpacity onPress={openDrawer}>
                     <MaterialIcons name="more-vert" size={24} color="#000" />
                   </TouchableOpacity>
                 </View>
               </View>
+              </TouchableWithoutFeedback>
 
               {/* Message list */}
               <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -360,22 +477,56 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
             {drawerVisible && (
               <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
                 <View style={styles.drawerHeader}>
-                  <TouchableOpacity onPress={closeDrawer}>
+                  <TouchableOpacity onPress={closeDrawer} style={{ marginRight: 12 }}>
                     <Ionicons name="chevron-forward" size={28} color="#000" />
                   </TouchableOpacity>
                   <Text style={styles.drawerTitle}>Back to Chat</Text>
+                  <TouchableOpacity onPress={openSettingsDrawer} style={{ marginLeft: 'auto' }}>
+                    <Ionicons name="settings-outline" size={24} color="#000" />
+                  </TouchableOpacity>
                 </View>
 
                 <View style={{ flex: 1 }}>
                   {renderExpandableCard('Summary', 'summary', SummaryScreen)}
                   {renderExpandableCard('Doctors Near Me', 'doctors', DoctorsScreen)}
-                  <TouchableOpacity style={styles.leaveButton} onPress={() => {}}>
+                  {/* <TouchableOpacity style={styles.leaveButton} onPress={() => {}}>
                     <Text style={styles.leaveButtonText}>Leave Chat</Text>
+                  </TouchableOpacity> */}
+                </View>
+              </Animated.View>
+            )}
+
+            {settingsVisible && (
+              <Animated.View style={[styles.settingsDrawer, { transform: [{ translateX: settingsSlideAnim }] }]}>
+                <View style={styles.drawerHeader}>
+                  <TouchableOpacity onPress={closeSettingsDrawer}>
+                    <Ionicons name="chevron-back" size={28} color="#000" />
+                  </TouchableOpacity>
+                  <Text style={styles.drawerTitle}>Settings</Text>
+                </View>
+
+                <View style={{ paddingHorizontal: 8 }}>
+                  <Text style={{ marginBottom: 4, fontWeight: '600' }}>Rename Chat</Text>
+                  <TextInput
+                    placeholder={chatTitle}
+                    value={newTitle}
+                    onChangeText={setNewTitle}
+                    style={styles.renameInput}
+                    placeholderTextColor="#999"
+                  />
+                  <TouchableOpacity style={styles.renameButton} onPress={renameChatTitle}>
+                    <Text style={{ color: '#fff', fontWeight: '600' }}>Rename</Text>
+                  </TouchableOpacity>
+
+                  <View style={{ marginVertical: 20 }} />
+
+                  <TouchableOpacity style={styles.leaveButton} onPress={() => handleDeleteChat(chatId)}>
+                    <Text style={styles.leaveButtonText}>Leave Chat Room</Text>
                   </TouchableOpacity>
                 </View>
               </Animated.View>
             )}
-          </View>
+                      </View>
       </KeyboardAvoidingView>
   );
 }
@@ -574,5 +725,34 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     zIndex: 10,
+  },
+  settingsDrawer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: '100%',
+    backgroundColor: '#fff',
+    borderLeftWidth: 1,
+    borderLeftColor: '#ccc',
+    padding: 16,
+    zIndex: 15,
+    elevation: 6,
+  },
+  
+  renameInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    backgroundColor: '#f9f9f9',
+  },
+  
+  renameButton: {
+    backgroundColor: '#2c3e50',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
   },
 });
