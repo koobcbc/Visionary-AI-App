@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
-  TouchableOpacity, Linking, Alert, TextInput, Button
+  TouchableOpacity, Linking, Alert, TextInput, Button, Modal, Dimensions
 } from 'react-native';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
+import taxonomy from '../../../assets/nucc_taxonomy_250.json';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import Constants from 'expo-constants';
+import DropDownPicker from 'react-native-dropdown-picker';
 
+
+const STATE = 'IL';
 
 type Doctor = {
   name: string;
@@ -12,17 +19,154 @@ type Doctor = {
   address: string;
   mapQuery: string;
 };
+type TaxonomyEntry = {
+  Grouping: string;
+  Classification: string;
+  Specialization: string;
+  DisplayName: string;
+  Code: string;
+};
 
-const SPECIALTY = 'Ophthalmology';
-const STATE = 'IL';
+type SpecializationEntry = {
+  name: string;
+  displayName: string;
+  code: string;
+  specialization: string;
+};
 
-export default function DoctorsScreen() {
+type NestedSpecialties = {
+  [group: string]: {
+    [classification: string]: SpecializationEntry[];
+  };
+};
+
+type Summary = {
+  diagnosis: string;
+  symptoms: string[];
+  causes: string[];
+  treatments: string[];
+  specialty: string;
+};
+
+export default function DoctorsScreen({ summary }: { summary: Summary }) {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [zipInput, setZipInput] = useState('');
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
+  const [selectedSpecialty, setSelectedSpecialty] = useState(summary.specialty || '');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [selectedClass, setSelectedClass] = useState<string | null>(null);
+  const [hasChangedDefaults, setHasChangedDefaults] = useState(false);
+
+
+  // Dropdown states
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [groupValue, setGroupValue] = useState(null);
+  const [groupItems, setGroupItems] = useState([]);
+
+  const [classOpen, setClassOpen] = useState(false);
+  const [classValue, setClassValue] = useState(null);
+  const [classItems, setClassItems] = useState([]);
+
+  const [specOpen, setSpecOpen] = useState(false);
+  const [specValue, setSpecValue] = useState(null);
+  const [specItems, setSpecItems] = useState([]);
+
+  const [nestedSpecialties, setNestedSpecialties] = useState({});
+
+  useEffect(() => {
+    const tree = buildNestedSpecialties(taxonomy);
+    console.log("tree", tree)
+    setNestedSpecialties(tree);
+    setGroupItems(Object.keys(tree).map(k => ({ label: k, value: k })));
+
+    const matched =
+      taxonomy.find(
+        (entry) =>
+          entry["Specialization"] &&
+          entry["Specialization"].toLowerCase() === summary.specialty.toLowerCase()
+      ) ||
+      taxonomy.find(
+        (entry) =>
+          entry["Classification"] &&
+          entry["Specialization"] === "" &&
+          entry["Classification"].toLowerCase() === summary.specialty.toLowerCase()
+      );
+      
+    console.log("taxonomy", taxonomy)
+    console.log("matched", matched)
+    if (matched) {
+      setGroupValue(matched.Grouping);
+      console.log("matched.Classification", matched.Classification)
+      setClassValue(matched.Classification);
+      setSpecValue(matched.Specialization || matched.Classification); // This is used as dropdown label
+      setSelectedSpecialty(matched.Specialization || matched.Classification); // Used for search
+    }
+  }, []);
+
+  useEffect(() => {
+    requestLocation();
+  }, []);
+
+  function buildNestedSpecialties(taxonomy: TaxonomyEntry[]): NestedSpecialties {
+    const nested: NestedSpecialties = {};
+  
+    taxonomy.forEach(({ Grouping, Classification, Specialization, DisplayName, Code }) => {
+      if (!Grouping || !Classification) return;
+  
+      if (!nested[Grouping]) nested[Grouping] = {};
+      if (!nested[Grouping][Classification]) nested[Grouping][Classification] = [];
+  
+      nested[Grouping][Classification].push({
+        name: Specialization || Classification,
+        displayName: DisplayName,
+        code: Code,
+        specialization: Specialization,
+      });
+    });
+  
+    return nested;
+  }
+
+  useEffect(() => {
+    if (groupValue) {
+      const classes = Object.keys(nestedSpecialties[groupValue] || {});
+      setClassItems(classes.map(c => ({ label: c, value: c })));
+      if (hasChangedDefaults) {
+        setClassValue(null);
+        setSpecValue(null);
+        setSpecItems([]);
+      }
+    }
+  }, [groupValue]);
+
+  function setGroupValueInDropdown (value) {
+    setGroupValue(value);
+    setHasChangedDefaults(true);
+  }
+
+  console.log("nestedSpecialties", nestedSpecialties)
+  console.log("groupvalue", groupValue)
+  console.log("class value", classValue)
+  console.log("speci value", specValue)
+  useEffect(() => {
+    if (groupValue && classValue) {
+      const specs = nestedSpecialties[groupValue][classValue];
+      setSpecItems(
+        specs.map((s) => ({
+          label: s.name,
+          value: s.name, // ensures uniqueness
+        }))
+      );
+    }
+  }, [classValue]);
+
+  useEffect(() => {
+    if (specValue) fetchDoctors(undefined, undefined, undefined, specValue);
+  }, [specValue]);
 
   const requestLocation = async () => {
     setLoading(true);
@@ -36,7 +180,7 @@ export default function DoctorsScreen() {
 
       const loc = await Location.getCurrentPositionAsync({});
       setLocation(loc);
-      fetchDoctors(loc.coords.latitude, loc.coords.longitude);
+      fetchDoctors(loc.coords.latitude, loc.coords.longitude, undefined, selectedSpecialty);
     } catch (err: any) {
       setError("Unable to fetch location.");
       setLoading(false);
@@ -44,19 +188,18 @@ export default function DoctorsScreen() {
   };
 
   const formatZipCode = (address: string) => {
-    // Match and format 9-digit ZIP code (e.g., 123456789 -> 12345-6789)
     return address.replace(/(\D|^)(\d{5})(\d{4})(\D|$)/, '$1$2-$3$4');
   };
 
-  const fetchDoctors = async (lat?: number, lon?: number, zip?: string) => {
+  const fetchDoctors = async (lat?: number, lon?: number, zip?: string, specialty?: string) => {
     setLoading(true);
     try {
-      let url = `https://npiregistry.cms.hhs.gov/api/?version=2.1&taxonomy_description=${encodeURIComponent(SPECIALTY)}&limit=20`;
+      let selected = specialty || selectedSpecialty;
+      let url = `https://npiregistry.cms.hhs.gov/api/?version=2.1&taxonomy_description=${encodeURIComponent(selected)}&limit=20`;
 
       if (zip) {
         url += `&postal_code=${zip}`;
       } else if (lat && lon) {
-        // NPI registry doesn't support lat/lon directly, you'd need reverse geocoding to get zip/state
         const geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
         if (geo[0]?.postalCode) {
           url += `&postal_code=${geo[0].postalCode}`;
@@ -87,50 +230,131 @@ export default function DoctorsScreen() {
           mapQuery
         };
       });
-
+      console.log(parsed)
       setDoctors(parsed);
     } catch (err: any) {
+      console.error(err)
       setError(err.message || 'Failed to fetch doctors');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    requestLocation();
-  }, []);
+  function buildNestedSpecialties(taxonomy: TaxonomyEntry[]): NestedSpecialties {
+    const nested: NestedSpecialties = {};
+  
+    taxonomy.forEach(({ Grouping, Classification, Specialization, DisplayName, Code }) => {
+      if (!Grouping || !Classification) return;
+  
+      if (!nested[Grouping]) nested[Grouping] = {};
+      if (!nested[Grouping][Classification]) nested[Grouping][Classification] = [];
+  
+      nested[Grouping][Classification].push({
+        name: Specialization || Classification,
+        displayName: DisplayName,
+        code: Code,
+        specialization: Specialization,
+      });
+    });
+  
+    return nested;
+  }
 
   const handleZipSearch = () => {
     if (zipInput.trim()) {
-      fetchDoctors(undefined, undefined, zipInput.trim());
+      fetchDoctors(undefined, undefined, zipInput.trim(), selectedSpecialty);
     }
   };
 
+  const API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY;
+  const genAI = new GoogleGenerativeAI(API_KEY);
+
+  async function getGeminiResponse(msg: string) {
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
+      const chat = model.startChat({
+        history: [
+          { role: "user", parts: [{ text: "Hi" }] },
+          { role: "model", parts: [{ text: "Hello! How can I assist you today?" }] },
+        ]
+      });
+      const result = await chat.sendMessage(msg);
+      return result.response.text();
+    } catch (error) {
+      console.error("Gemini error:", error);
+      return "Sorry, something went wrong.";
+    }
+  }
 
   const openInMaps = (query: string) => {
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
     Linking.openURL(url).catch(() => Alert.alert('Error', 'Failed to open Maps'));
   };
 
-  useEffect(() => {
-    fetchDoctors();
-  }, []);
-
-  if (loading) {
-    return <ActivityIndicator size="large" style={{ marginTop: 50 }} />;
-  }
-
-  if (error) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={{ color: 'red', fontSize: 16 }}>{error}</Text>
-      </View>
-    );
+  const capitalize = (str: string) => {
+    if (str) {
+      return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    }
+    return '';
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.subTitle}>Specialty: {SPECIALTY}</Text>
+      <View style={styles.specialtyContainer}>
+        <Text style={styles.specialtyText}>
+          Specialty: {capitalize(specValue)}
+        </Text>
+        <TouchableOpacity onPress={() => setModalVisible(true)}>
+          <Ionicons name="pencil" size={20} color="black" style={styles.iconStyle} />
+        </TouchableOpacity>
+      </View>
+
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+          <DropDownPicker
+            open={groupOpen}
+            value={groupValue}
+            items={groupItems}
+            setOpen={setGroupOpen}
+            setValue={setGroupValueInDropdown}
+            setItems={setGroupItems}
+            placeholder="Select Group"
+            zIndex={3000}
+            zIndexInverse={1000}
+          />
+
+          <DropDownPicker
+            open={classOpen}
+            value={classValue}
+            items={classItems}
+            setOpen={setClassOpen}
+            setValue={setClassValue}
+            setItems={setClassItems}
+            placeholder="Select Classification"
+            zIndex={2000}
+            zIndexInverse={2000}
+          />
+
+          <DropDownPicker
+            open={specOpen}
+            value={specValue}
+            items={specItems}
+            setOpen={setSpecOpen}
+            setValue={setSpecValue}
+            setItems={setSpecItems}
+            placeholder="Select Specialization"
+            zIndex={1000}
+            zIndexInverse={3000}
+          />
+            <Button title="Back" onPress={() => {
+              if (selectedClass) setSelectedClass(null);
+              else if (selectedGroup) setSelectedGroup(null);
+              else setModalVisible(false);
+            }} />
+          </View>
+        </View>
+      </Modal>
 
       {locationPermissionDenied && (
         <View style={{ marginBottom: 20 }}>
@@ -177,8 +401,6 @@ export default function DoctorsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', padding: 20 },
-  title: { fontSize: 20, fontWeight: '700', marginBottom: 10, alignSelf: 'center' },
-  subTitle: { fontSize: 16, fontWeight: '500', marginBottom: 16, textAlign: 'center' },
   card: {
     backgroundColor: '#e6f0fa',
     padding: 12,
@@ -190,5 +412,23 @@ const styles = StyleSheet.create({
   address: { fontSize: 13, color: '#555' },
   errorContainer: {
     flex: 1, alignItems: 'center', justifyContent: 'center'
+  },
+  specialtyContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  specialtyText: { fontSize: 16, fontWeight: 'bold' },
+  editButton: { marginLeft: 10, color: 'blue' },
+  specialtyItem: { padding: 10, fontSize: 16 },
+  iconStyle: { marginLeft: 8 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    width: '80%',
+    borderRadius: 10,
+    padding: 16,
+    maxHeight: 400
   }
 });

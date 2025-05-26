@@ -27,6 +27,14 @@ type Message = {
   image?: string;
 };
 
+type Summary = {
+  diagnosis: string;
+  symptoms: string[];
+  causes: string[];
+  treatments: string[];
+  specialty: string;
+}
+
 export default function ChatScreen({ chatId }: { chatId: string }) {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [expandedCard, setExpandedCard] = useState<'summary' | 'doctors' | null>(null);
@@ -44,6 +52,14 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
   const settingsSlideAnim = useRef(new Animated.Value(300)).current;
   const [chatTitle, setChatTitle] = useState('Chat');
   const [newTitle, setNewTitle] = useState('');
+  const [summary, setSummary] = useState<Summary>({
+    diagnosis: "Not enough information",
+    symptoms: [],
+    causes: [],
+    treatments: [],
+    specialty: ""
+  });
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
@@ -62,6 +78,7 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
       setMessages(msgs);
+      console.log("setting messages", msgs)
     });
     return () => unsubscribe();
   }, [chatId]);
@@ -84,6 +101,11 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
     if (flatListRef.current) {
       flatListRef.current.scrollToEnd({ animated: true });
     }
+  }, [messages])
+
+  useEffect(() => {
+    console.log(messages)
+    generateSummary(messages)
   }, [messages])
 
   const openDrawer = () => {
@@ -385,6 +407,75 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
     );
   };
 
+  const generateSummary = async (msgs: Message[]) => {
+    const relevantTexts = msgs
+      .filter(m => m.sender === 'bot' && m.text && !m.text.includes("[Image]"))
+      .map(m => m.text)
+      .join('\n');
+  
+    const geminiPrompt = `
+      You're an assistant that summarizes skin lesion diagnosis conversations.
+      
+      Analyze the following conversation between a user and an AI model that classifies images of skin lesions. Based on the bot messages below, extract and organize the information into the following JSON format:
+      
+      {
+        "diagnosis": "string",
+        "symptoms": "list of string",
+        "causes": "list of string",
+        "treatments": "list of string",
+        "specialty" : "string"
+      }
+      
+      Here is the json of all the specialties taxonomy; Please use this information to select a specialty from this list; If there isn't enough information, leave specialty as blank.
+      If any of the fields lack sufficient information, respond with "Not enough information" for that field (but symptoms, causes, and treatments are still going to be in a list).
+
+      Give response just as a pure json.
+      
+      Conversation:
+      ${relevantTexts}
+      `;
+  
+    const responseText = await getGeminiResponse(geminiPrompt);
+
+    console.log("responseText", responseText)
+  
+    try {
+
+      if (
+        !responseText.includes('{') ||
+        !responseText.includes('}') ||
+        (!responseText.includes('```json'))
+      ) {
+        console.warn("Gemini response not JSON. Skipping.");
+        return {
+          diagnosis: "Not enough information",
+          symptoms: [],
+          causes: [],
+          treatments: [],
+          specialty: ""
+        };
+      }
+      
+      const cleanJson = responseText
+      .replace(/```json|```/g, '') // Remove Markdown blocks
+      .trim();
+
+      const parsed: Summary = JSON.parse(cleanJson);
+      setSummary(parsed);
+      return parsed;
+    } catch (err) {
+      console.error("Gemini response was not valid JSON:", responseText);
+      console.error("error", err)
+      return {
+        diagnosis: "Not enough information",
+        symptoms: ["Not enough information"],
+        causes: ["Not enough information"],
+        treatments: ["Not enough information"],
+        specialty: ""
+      };
+    }
+  };
+
   return (
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={50}>
           <View style={{ flex: 1 }}>
@@ -395,7 +486,27 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
                 <TouchableOpacity onPress={() => router.replace('/dashboard')}>
                   <Ionicons name="chevron-back" size={28} color="#000" />
                 </TouchableOpacity>
-                <Text style={styles.chatTitle}>{chatTitle}</Text>
+                {/* ChatTitle */}
+                <TouchableOpacity onPress={() => setIsEditingTitle(true)} activeOpacity={0.7}>
+                  {isEditingTitle ? (
+                    <TextInput
+                      style={[styles.chatTitle, styles.titleInput]}
+                      value={newTitle}
+                      onChangeText={setNewTitle}
+                      onBlur={async () => {
+                        setIsEditingTitle(false);
+                        if (newTitle.trim()) await renameChatTitle(); // Save if valid
+                      }}
+                      onSubmitEditing={async () => {
+                        setIsEditingTitle(false);
+                        if (newTitle.trim()) await renameChatTitle();
+                      }}
+                      autoFocus
+                    />
+                  ) : (
+                    <Text style={styles.chatTitle}>{chatTitle}</Text>
+                  )}
+                </TouchableOpacity>
                 <View style={styles.headerIcons}>
                   <TouchableOpacity onPress={openDrawer}>
                     <MaterialIcons name="more-vert" size={24} color="#000" />
@@ -487,8 +598,8 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  {renderExpandableCard('Summary', 'summary', SummaryScreen)}
-                  {renderExpandableCard('Doctors Near Me', 'doctors', DoctorsScreen)}
+                  {renderExpandableCard('Summary', 'summary', () => <SummaryScreen summary={summary} />)}
+                  {renderExpandableCard('Doctors Near Me', 'doctors', () => <DoctorsScreen summary={summary} />)}
                   {/* <TouchableOpacity style={styles.leaveButton} onPress={() => {}}>
                     <Text style={styles.leaveButtonText}>Leave Chat</Text>
                   </TouchableOpacity> */}
@@ -739,7 +850,6 @@ const styles = StyleSheet.create({
     zIndex: 15,
     elevation: 6,
   },
-  
   renameInput: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -748,11 +858,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: '#f9f9f9',
   },
-  
   renameButton: {
     backgroundColor: '#2c3e50',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
+  titleInput: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderBottomWidth: 1,
+    borderColor: '#aaa',
+    fontSize: 18,
+    fontWeight: 'bold',
+    minWidth: 100,
+    maxWidth: 200,
+    color: '#000',
+  }
 });

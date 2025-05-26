@@ -10,6 +10,7 @@ import { db } from '../firebaseConfig';
 import { getAuth, signOut } from 'firebase/auth';
 import { SwipeListView } from 'react-native-swipe-list-view';
 import * as Location from 'expo-location';
+import { TouchableWithoutFeedback, Keyboard } from 'react-native';
 
 const auth = getAuth();
 
@@ -131,68 +132,73 @@ export default function Dashboard() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <TouchableOpacity style={styles.avatar} onPress={() => setMenuVisible(!menuVisible)}>
-            <Text style={styles.avatarText}>{userInitial}</Text>
+    <TouchableWithoutFeedback onPress={() => {
+      setMenuVisible(false);
+      Keyboard.dismiss(); // Also dismiss keyboard just in case
+    }}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View>
+            <TouchableOpacity style={styles.avatar} onPress={() => setMenuVisible(!menuVisible)}>
+              <Text style={styles.avatarText}>{userInitial}</Text>
+            </TouchableOpacity>
+            {menuVisible && (
+              <View style={styles.menu}>
+                <TouchableOpacity onPress={() => router.push('/account')}>
+                  <Text style={styles.menuItem}>Account</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/settings')}>
+                  <Text style={styles.menuItem}>Settings</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleLogout}>
+                  <Text style={styles.menuItem}>Logout</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          <Text style={styles.headerTitle}>Chats</Text>
+
+          <TouchableOpacity onPress={handleNewChat}>
+            <Ionicons name="add-circle-outline" size={28} color="#333" />
           </TouchableOpacity>
-          {menuVisible && (
-            <View style={styles.menu}>
-              <TouchableOpacity onPress={() => router.push('/account')}>
-                <Text style={styles.menuItem}>Account</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/settings')}>
-                <Text style={styles.menuItem}>Settings</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleLogout}>
-                <Text style={styles.menuItem}>Logout</Text>
+        </View>
+
+        <SwipeListView
+          data={chats}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.rowFront}>
+              <TouchableOpacity
+                style={styles.chatCard}
+                onPress={() => openChat(item)}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.chatTitle}>{item.title}</Text>
+                <Text style={styles.timestamp}>
+                  {item.last_message_at?.toDate().toLocaleString() || "Unknown"}
+                </Text>
               </TouchableOpacity>
             </View>
           )}
-        </View>
-
-        <Text style={styles.headerTitle}>Chats</Text>
-
-        <TouchableOpacity onPress={handleNewChat}>
-          <Ionicons name="add-circle-outline" size={28} color="#333" />
-        </TouchableOpacity>
+          renderHiddenItem={({ item }) => (
+            <View style={styles.rowBack}>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleDeleteChat(item.id)}
+              >
+                <Text style={styles.deleteText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          rightOpenValue={-75}
+          disableRightSwipe
+          previewRowKey={'0'}
+          previewOpenValue={-40}
+          previewOpenDelay={300}
+        />
       </View>
-
-      <SwipeListView
-        data={chats}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.rowFront}>
-            <TouchableOpacity
-              style={styles.chatCard}
-              onPress={() => openChat(item)}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.chatTitle}>{item.title}</Text>
-              <Text style={styles.timestamp}>
-                {item.last_message_at?.toDate().toLocaleString() || "Unknown"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        renderHiddenItem={({ item }) => (
-          <View style={styles.rowBack}>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => handleDeleteChat(item.id)}
-            >
-              <Text style={styles.deleteText}>Delete</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        rightOpenValue={-75}
-        disableRightSwipe
-        previewRowKey={'0'}
-        previewOpenValue={-40}
-        previewOpenDelay={300}
-      />
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
 
