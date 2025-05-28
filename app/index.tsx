@@ -10,7 +10,7 @@ import {
   Keyboard
 } from 'react-native';
 import AuthScreen from '../components/AuthScreen';
-import logo from '../assets/images/logo_cropped_white.jpeg';
+import logo from '../assets/images/dermascanAI_logo.png';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 
 export const unstable_settings = { initialRouteName: "dashboard" };

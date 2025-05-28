@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import SummaryScreen from './SummaryScreen';
 import DoctorsScreen from './DoctorsScreen';
 import Markdown from 'react-native-markdown-display';
+import logo from '../../../assets/images/chat-bot-icon.png';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -556,14 +557,15 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
                 }}
                 scrollEventThrottle={100}
                 renderItem={({ item }) => (
-                  <View style={{ width: '100%' }}>
+                  <View style={{ width: '100%', flexDirection: item.sender === 'bot' ? 'row' : 'row-reverse', alignItems: 'flex-start', marginBottom: 10 }}>
+                    {item.sender === 'bot' && (
+                      <Image source={logo} style={styles.botAvatar} />
+                    )}
+                
                     <View style={[styles.messageBubble, item.sender === 'bot' ? styles.botBubble : styles.userBubble]}>
-                      {item.sender === 'bot' ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                          <Ionicons name="medkit-outline" size={16} color="#333" style={{ marginRight: 4 }} />
-                          <Text style={styles.sender}>Dermascan AI</Text>
-                        </View>
-                      ) : null}
+                      {item.sender === 'bot' && (
+                        <Text style={styles.sender}>Dermascan AI</Text>
+                      )}
                       {item.image && <Image source={{ uri: item.image }} style={styles.imagePreview} />}
                       <Markdown style={markdownStyles}>{item.text}</Markdown>
                     </View>
@@ -685,34 +687,37 @@ const styles = StyleSheet.create({
   },
   container: { flex: 1, backgroundColor: '#f9fafe' },
   messages: { padding: 12, paddingBottom: 40 },
+  botAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+    marginTop: 6,
+  },
   messageBubble: {
-    maxWidth: '80%',
+    maxWidth: '72%',
     padding: 12,
-    borderRadius: 12,
-    marginBottom: 12,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
   },
   userBubble: {
     backgroundColor: '#d2ecf9',
     alignSelf: 'flex-end',
-    marginLeft: 50,
     borderTopRightRadius: 0,
-    paddingTop: 6,
-    paddingBottom: 6
   },
   botBubble: {
-    backgroundColor: '#ffe9c9',
+    backgroundColor: '#f2f2f2',
     alignSelf: 'flex-start',
-    marginRight: 50,
     borderTopLeftRadius: 0,
   },
   sender: {
     fontWeight: '600',
+    color: '#888',
+    fontSize: 12,
     marginBottom: 4,
-    color: '#333'
   },
   messageText: {
     fontSize: 15,
