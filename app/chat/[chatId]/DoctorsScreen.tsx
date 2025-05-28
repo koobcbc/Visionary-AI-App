@@ -376,10 +376,10 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
           >
             <View style={styles.pillTopRow}>
               <Ionicons name="location-sharp" size={16} color="#000" style={{ marginRight: 4 }} />
-              <Text style={styles.pillZip}>{zipCode || '00000'}</Text>
+              <Text style={styles.pillZip}>{zipCode || ''}</Text>
               <Ionicons name="chevron-down" size={16} color="#000" style={{ marginLeft: 4 }} />
             </View>
-            <Text style={styles.pillCity}>{city || 'Unknown City'}</Text>
+            <Text style={styles.pillCity}>{city || 'City'}</Text>
           </TouchableOpacity>
         </View>
         <Modal visible={editingZip} transparent animationType="fade">

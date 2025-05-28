@@ -7,6 +7,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import { useRouter } from 'expo-router';
 import logo from '../assets/images/dermascan_logo_transparent.png';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -29,6 +30,10 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
           <View style={styles.container}>
+            {/* Back Button */}
+            <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
+              <Ionicons name="arrow-back" size={24} color="#2c3e50" />
+            </TouchableOpacity>
             <Image source={logo} style={styles.logo} resizeMode="contain" />
             <TextInput placeholder="Email" style={styles.input} placeholderTextColor="#666" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
             <TextInput placeholder="Password" style={styles.input} placeholderTextColor="#666" secureTextEntry value={password} onChangeText={setPassword} />
@@ -68,5 +73,11 @@ const styles = StyleSheet.create({
   },
   authButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   toggleText: { color: '#2c3e50', fontSize: 14, marginTop: 8 },
-  error: { color: 'red', marginTop: 10, textAlign: 'center' }
+  error: { color: 'red', marginTop: 10, textAlign: 'center' },
+  backButton: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 10,
+  },
 });

@@ -68,6 +68,7 @@ export default function Dashboard() {
     try {
       if (unsubscribeRef.current) unsubscribeRef.current();
       await signOut(auth);
+      await new Promise(res => setTimeout(res, 500));
       router.replace('/');
     } catch (error) {
       Alert.alert("Logout Failed", "An error occurred while logging out.");

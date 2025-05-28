@@ -8,6 +8,7 @@ import { auth, db } from '../firebaseConfig';
 import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
 import logo from '../assets/images/dermascan_logo_transparent.png';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function SignupScreen() {
   const [email, setEmail] = useState('');
@@ -28,6 +29,7 @@ export default function SignupScreen() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      await new Promise(res => setTimeout(res, 500));
       await setDoc(doc(db, 'users', user.uid), {
         firstName, lastName, email, phoneNumber, createdAt: new Date()
       });
@@ -43,6 +45,10 @@ export default function SignupScreen() {
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
           <View style={[styles.container, styles.signupContainer]}>
+            {/* Back Button */}
+            <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
+              <Ionicons name="arrow-back" size={24} color="#2c3e50" />
+            </TouchableOpacity>
             <Image source={logo} style={styles.logo} resizeMode="contain" />
             <TextInput placeholder="First Name" placeholderTextColor="#666" style={styles.input} onChangeText={setFirstName} value={firstName} />
             <TextInput placeholder="Last Name" placeholderTextColor="#666" style={styles.input} onChangeText={setLastName} value={lastName} />
@@ -85,11 +91,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   signupContainer: {
-    paddingHorizontal: 0,
+    padding: 20,
   },
   input: {
     width: '100%',
-    height: 42, // smaller height
+    height: 42,
     borderColor: '#ddd',
     borderWidth: 1,
     borderRadius: 12,
@@ -121,5 +127,11 @@ const styles = StyleSheet.create({
     color: 'red',
     marginTop: 10,
     textAlign: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 10,
   },
 });
