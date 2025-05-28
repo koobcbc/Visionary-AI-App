@@ -10,7 +10,7 @@ import {
   Keyboard
 } from 'react-native';
 import AuthScreen from '../components/AuthScreen';
-import logo from '../assets/images/dermascanAI_logo.png';
+import logo from '../assets/images/dermascanAI_logo_cropped.png';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 
 export const unstable_settings = { initialRouteName: "dashboard" };
@@ -59,7 +59,6 @@ const styles = StyleSheet.create({
   logo: {
     width: 250,
     height: 250,
-    marginBottom: 10,
     borderRadius: 10
   },
   formWrapper: {

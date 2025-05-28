@@ -10,6 +10,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
+  TouchableOpacity,
   Alert
 } from 'react-native';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -44,6 +45,8 @@ export default function AuthScreen() {
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
+        await new Promise(res => setTimeout(res, 1000)); // wait for auth session to stabilize
+        console.log("auth", auth)
 
         // Save user info to Firestore
         await setDoc(doc(db, 'users', user.uid), {
@@ -85,8 +88,12 @@ export default function AuthScreen() {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
-          <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={60}
+      >
+          <View style={[styles.container, mode === 'signup' && styles.signupContainer]}>
             {mode === 'signup' && (
               <>
                 <TextInput placeholder="First Name" placeholderTextColor="#666" style={styles.input}
@@ -105,10 +112,15 @@ export default function AuthScreen() {
               <TextInput placeholder="Confirm Password" placeholderTextColor="#666" secureTextEntry
                 style={styles.input} onChangeText={setConfirmPassword} value={confirmPassword} />
             )}
-            <Button title={mode === 'login' ? 'Login' : 'Sign Up'} onPress={handleAuth} />
-            <Text style={styles.toggle} onPress={toggleMode}>
-              {mode === 'login' ? "Don't have an account? Sign up" : "Already have an account? Log in"}
-            </Text>
+            <TouchableOpacity style={styles.authButton} onPress={handleAuth}>
+              <Text style={styles.authButtonText}>{mode === 'login' ? 'SIGN IN' : 'SIGN UP'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
+              <Text style={styles.toggleText}>
+                {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
+              </Text>
+            </TouchableOpacity>
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </View>
         </KeyboardAvoidingView>
@@ -119,13 +131,37 @@ export default function AuthScreen() {
 
 const styles = StyleSheet.create({
   scrollContainer: { flexGrow: 1, justifyContent: 'center' },
-  keyboardView: { flex: 1 },
   container: { padding: 20, alignItems: 'center' },
+  signupContainer: { padding: 0, alignItems: 'center' },
   input: {
-    height: 40, width: '90%', borderColor: '#ccc',
-    borderWidth: 1, marginBottom: 10,
-    paddingHorizontal: 10, borderRadius: 5, color: '#000'
+    width: '100%',
+    height: 50,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 12,
+    marginBottom: 16,
+    paddingHorizontal: 14,
+    backgroundColor: '#f9f9f9',
+    color: '#000'
   },
-  toggle: { color: 'blue', marginTop: 10, textAlign: 'center' },
-  error: { color: 'red', marginTop: 10, textAlign: 'center' }
+  error: { color: 'red', marginTop: 10, textAlign: 'center' },
+  authButton: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#2c3e50',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  authButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  toggleText: {
+    color: '#2c3e50',
+    fontSize: 14,
+    marginTop: 8,
+  },
 });
