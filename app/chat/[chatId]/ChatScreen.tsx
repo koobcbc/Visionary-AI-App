@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, FlatList, StyleSheet,
-  KeyboardAvoidingView, Platform, Image, TouchableOpacity, Animated, Dimensions, ActionSheetIOS, Alert, TouchableWithoutFeedback, Keyboard, ScrollView
+  KeyboardAvoidingView, Platform, Image, TouchableOpacity, Animated, Dimensions, ActionSheetIOS, Alert, TouchableWithoutFeedback, Keyboard, ScrollView, Modal
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
@@ -284,11 +284,10 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
         - Whether they should be concerned
         - If a follow-up with a healthcare provider is necessary
 
-        Remove all the unnecessary parts and give response so I can directly show the user as a message response.
+        Remove all the unnecessary parts like "Okay, here's a message you can show the user: " and quotations, etc. Give just the response that I can show the user as a message response.
       `;
   
       const responseText = await getGeminiResponse(geminiPrompt);
-      print("responseText", responseText)
       await addDoc(collection(db, `chats/${chatId}/messages`), {
         text: responseText,
         createdAt: serverTimestamp(),
@@ -307,18 +306,21 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
   };
 
   const renderExpandableCard = (title: string, key: 'summary' | 'doctors', Component: React.ComponentType<any>) => (
-    <TouchableOpacity onPress={() => setExpandedCard(prev => prev === key ? null : key)}>
-      <View style={[styles.card, expandedCard === key && { height: screenHeight * 0.65 }]}> 
+    <View style={[styles.card, expandedCard === key && { height: screenHeight * 0.65 }]}> 
+      <TouchableOpacity onPress={() => setExpandedCard(prev => prev === key ? null : key)}>
         <Text style={styles.cardTitle}>{title}</Text>
-        {expandedCard === key ? (
-          <View style={styles.expandedCardContent}>
-            <Component chatId={chatId} />
-          </View>
-        ) : (
-          <Text style={styles.cardText}>{key === 'summary' ? 'AI-generated summary of your recent chat.' : 'Find nearby providers for follow-up care.'}</Text>
-        )}
-      </View>
-    </TouchableOpacity>
+        {
+          expandedCard === key ? null : <Text style={styles.cardText}>{key === 'summary' ? 'AI-generated summary of your recent chat.' : 'Find nearby providers for follow-up care.'}</Text>
+        }
+      </TouchableOpacity>
+      {expandedCard === key ? (
+        <View style={styles.expandedCardContent}>
+          <Component chatId={chatId} />
+        </View>
+      ) : (
+        null
+      )}
+    </View>
   );
 
   const markdownStyles = {
@@ -488,25 +490,41 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
                 </TouchableOpacity>
                 {/* ChatTitle */}
                 <TouchableOpacity onPress={() => setIsEditingTitle(true)} activeOpacity={0.7}>
-                  {isEditingTitle ? (
-                    <TextInput
-                      style={[styles.chatTitle, styles.titleInput]}
-                      value={newTitle}
-                      onChangeText={setNewTitle}
-                      onBlur={async () => {
-                        setIsEditingTitle(false);
-                        if (newTitle.trim()) await renameChatTitle(); // Save if valid
-                      }}
-                      onSubmitEditing={async () => {
-                        setIsEditingTitle(false);
-                        if (newTitle.trim()) await renameChatTitle();
-                      }}
-                      autoFocus
-                    />
-                  ) : (
-                    <Text style={styles.chatTitle}>{chatTitle}</Text>
-                  )}
+                  <Text style={styles.chatTitle}>{chatTitle}</Text>
                 </TouchableOpacity>
+
+                {/* Modal for editing title */}
+                <Modal visible={isEditingTitle} transparent animationType="fade">
+                  <View style={styles.modalOverlay}>
+                    <View style={styles.modalBox}>
+                      <Text style={styles.modalLabel}>Edit Chat Title</Text>
+                      <TextInput
+                        style={styles.titleInput}
+                        value={newTitle}
+                        onChangeText={setNewTitle}
+                        placeholder={chatTitle}
+                        autoFocus
+                      />
+                      <View style={styles.modalButtons}>
+                        <TouchableOpacity onPress={() => setIsEditingTitle(false)} style={styles.cancelBtn}>
+                          <Text style={{ color: '#555' }}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={async () => {
+                            if (newTitle.trim()) {
+                              await renameChatTitle();
+                              setIsEditingTitle(false);
+                            }
+                          }}
+                          style={styles.saveBtn}
+                        >
+                          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Save</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                </Modal>
+
                 <View style={styles.headerIcons}>
                   <TouchableOpacity onPress={openDrawer}>
                     <MaterialIcons name="more-vert" size={24} color="#000" />
@@ -540,7 +558,12 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
                 renderItem={({ item }) => (
                   <View style={{ width: '100%' }}>
                     <View style={[styles.messageBubble, item.sender === 'bot' ? styles.botBubble : styles.userBubble]}>
-                      {item.sender === 'bot' ? <Text style={styles.sender}>{item.user}</Text> : null}
+                      {item.sender === 'bot' ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                          <Ionicons name="medkit-outline" size={16} color="#333" style={{ marginRight: 4 }} />
+                          <Text style={styles.sender}>Dermascan AI</Text>
+                        </View>
+                      ) : null}
                       {item.image && <Image source={{ uri: item.image }} style={styles.imagePreview} />}
                       <Markdown style={markdownStyles}>{item.text}</Markdown>
                     </View>
@@ -736,7 +759,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
   sendText: {
     color: '#fff',
     fontWeight: '600',
@@ -754,23 +776,19 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 5,
   },
-  
   drawerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
   },
-  
   drawerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 10,
   },
-  
   drawerContent: {
     flex: 1,
   },
-  
   drawerItem: {
     fontSize: 16,
     paddingVertical: 12,
@@ -788,18 +806,15 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  
   cardTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 8,
   },
-  
   cardText: {
     fontSize: 14,
     color: '#555',
   },
-  
   leaveButton: {
     backgroundColor: '#ef5350',
     paddingVertical: 14,
@@ -807,7 +822,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
   },
-  
   leaveButtonText: {
     color: 'white',
     fontSize: 16,
@@ -874,5 +888,61 @@ const styles = StyleSheet.create({
     minWidth: 100,
     maxWidth: 200,
     color: '#000',
-  }
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  modalBox: {
+    backgroundColor: '#fff',
+    width: '80%',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  
+  modalLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+    color: '#333',
+  },
+  
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  
+  cancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+    backgroundColor: '#f1f1f1',
+  },
+  
+  saveBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+    backgroundColor: '#2c3e50',
+  },
+  titleInput: {
+    borderBottomWidth: 1,
+    borderColor: '#ccc',
+    width: '100%',
+    textAlign: 'center',
+    fontSize: 16,
+    paddingVertical: 8,
+    marginBottom: 24,
+    color: '#ccc',
+  },
 });

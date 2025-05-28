@@ -9,6 +9,8 @@ import taxonomy from '../../../assets/nucc_taxonomy_250.json';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Constants from 'expo-constants';
 import DropDownPicker from 'react-native-dropdown-picker';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../../firebaseConfig'; // adjust path as needed
 
 
 const STATE = 'IL';
@@ -53,8 +55,9 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [zipCode, setZipCode] = useState('');
+  const [city, setCity] = useState('');
   const [zipInput, setZipInput] = useState('');
-  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState(summary.specialty || '');
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -77,9 +80,11 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
 
   const [nestedSpecialties, setNestedSpecialties] = useState({});
 
+  // zip code
+  const [editingZip, setEditingZip] = useState(false);
+
   useEffect(() => {
     const tree = buildNestedSpecialties(taxonomy);
-    console.log("tree", tree)
     setNestedSpecialties(tree);
     setGroupItems(Object.keys(tree).map(k => ({ label: k, value: k })));
 
@@ -96,11 +101,8 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
           entry["Classification"].toLowerCase() === summary.specialty.toLowerCase()
       );
       
-    console.log("taxonomy", taxonomy)
-    console.log("matched", matched)
     if (matched) {
       setGroupValue(matched.Grouping);
-      console.log("matched.Classification", matched.Classification)
       setClassValue(matched.Classification);
       setSpecValue(matched.Specialization || matched.Classification); // This is used as dropdown label
       setSelectedSpecialty(matched.Specialization || matched.Classification); // Used for search
@@ -108,7 +110,46 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
   }, []);
 
   useEffect(() => {
-    requestLocation();
+    const fetchZipFromUser = async () => {
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const userRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(userRef);
+  
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.zipCode) {
+              const zip = data.zipCode;
+              setZipCode(zip);
+              setZipInput(zip);
+
+              const geoResults = await Location.geocodeAsync(zip);
+              if (geoResults.length > 0) {
+                const { latitude, longitude } = geoResults[0];
+                const reverse = await Location.reverseGeocodeAsync({ latitude, longitude });
+                const place = reverse[0];
+                if (place?.city || place?.subregion || place?.region) {
+                  setCity(place.city || place.subregion || place.region);
+                }
+              }
+
+              fetchDoctors(undefined, undefined, zip, selectedSpecialty);
+              return; // skip location request
+            }
+          }
+        }
+  
+        // If no zipCode in Firestore or user not logged in
+        requestLocation();
+      } catch (err) {
+        console.error("Failed to load user ZIP from Firestore:", err);
+        Alert.alert("Firestore Error", "Unable to fetch saved ZIP code.");
+        requestLocation();
+      }
+    };
+  
+    fetchZipFromUser();
   }, []);
 
   function buildNestedSpecialties(taxonomy: TaxonomyEntry[]): NestedSpecialties {
@@ -148,10 +189,6 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
     setHasChangedDefaults(true);
   }
 
-  console.log("nestedSpecialties", nestedSpecialties)
-  console.log("groupvalue", groupValue)
-  console.log("class value", classValue)
-  console.log("speci value", specValue)
   useEffect(() => {
     if (groupValue && classValue) {
       const specs = nestedSpecialties[groupValue][classValue];
@@ -173,13 +210,42 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setLocationPermissionDenied(true);
         setLoading(false);
         return;
       }
 
       const loc = await Location.getCurrentPositionAsync({});
       setLocation(loc);
+      console.log("loc", loc)
+
+      const geo = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude
+      });
+      
+      
+      if (geo[0]) {
+        const { postalCode, city, subregion, region } = geo[0];
+        if (postalCode) {
+          setZipInput(postalCode)
+          setZipCode(postalCode)
+          try {
+            const user = auth.currentUser;
+            if (user) {
+              const userRef = doc(db, "users", user.uid);
+              await updateDoc(userRef, { zipCode: postalCode });
+              console.log("Zip code saved to Firestore");
+            }
+          } catch (err) {
+            console.error("Failed to update Firestore:", err);
+            Alert.alert("Firestore Error", "Failed to save ZIP code.");
+          }
+        };
+        if (city || subregion || region) {
+          setCity(city || subregion || region); // fallback if city is undefined
+        }
+      }
+
       fetchDoctors(loc.coords.latitude, loc.coords.longitude, undefined, selectedSpecialty);
     } catch (err: any) {
       setError("Unable to fetch location.");
@@ -230,7 +296,6 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
           mapQuery
         };
       });
-      console.log(parsed)
       setDoctors(parsed);
     } catch (err: any) {
       console.error(err)
@@ -298,8 +363,75 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
     return '';
   }
 
+  console.log(zipCode, city)
   return (
     <View style={styles.container}>
+
+      <View style={styles.pillContainer}>
+        <View style={{ alignItems: 'center', marginBottom: 6 }}>
+          <TouchableOpacity
+            style={styles.pill}
+            activeOpacity={0.8}
+            onPress={() => setEditingZip(true)}
+          >
+            <View style={styles.pillTopRow}>
+              <Ionicons name="location-sharp" size={16} color="#000" style={{ marginRight: 4 }} />
+              <Text style={styles.pillZip}>{zipCode || '00000'}</Text>
+              <Ionicons name="chevron-down" size={16} color="#000" style={{ marginLeft: 4 }} />
+            </View>
+            <Text style={styles.pillCity}>{city || 'Unknown City'}</Text>
+          </TouchableOpacity>
+        </View>
+        <Modal visible={editingZip} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalLabel}>Enter ZIP Code:</Text>
+              <TextInput
+                style={styles.input}
+                value={zipInput}
+                onChangeText={setZipInput}
+                keyboardType="numeric"
+                maxLength={5}
+                autoFocus
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity onPress={() => setEditingZip(false)} style={styles.cancelBtn}>
+                  <Text style={{ color: '#555' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={async () => {
+                    const trimmed = zipInput.trim();
+                    if (trimmed.length === 5) {
+                      setZipCode(trimmed);
+                      fetchDoctors(undefined, undefined, trimmed, selectedSpecialty);
+                      setEditingZip(false);
+
+                      try {
+                        const user = auth.currentUser;
+                        if (user) {
+                          const userRef = doc(db, "users", user.uid);
+                          await updateDoc(userRef, { zipCode: trimmed });
+                          console.log("Zip code saved to Firestore");
+                        }
+                      } catch (err) {
+                        console.error("Failed to update Firestore:", err);
+                        Alert.alert("Firestore Error", "Failed to save ZIP code.");
+                      }
+
+                    } else {
+                      Alert.alert("Invalid ZIP", "Please enter a valid 5-digit ZIP code.");
+                    }
+                  }}
+                  style={styles.saveBtn}
+                >
+                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+
       <View style={styles.specialtyContainer}>
         <Text style={styles.specialtyText}>
           Specialty: {capitalize(specValue)}
@@ -356,24 +488,6 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
         </View>
       </Modal>
 
-      {locationPermissionDenied && (
-        <View style={{ marginBottom: 20 }}>
-          <Text style={{ textAlign: 'center', color: 'red' }}>Location permission denied.</Text>
-          <Text style={{ textAlign: 'center' }}>Enter your ZIP code below to search manually:</Text>
-          <TextInput
-            placeholder="Enter ZIP code"
-            value={zipInput}
-            onChangeText={setZipInput}
-            keyboardType="numeric"
-            style={{
-              borderWidth: 1, padding: 8, marginTop: 10, borderRadius: 6,
-              borderColor: '#ccc', textAlign: 'center'
-            }}
-          />
-          <Button title="Search by ZIP" onPress={handleZipSearch} />
-        </View>
-      )}
-
       {loading ? (
         <ActivityIndicator size="large" style={{ marginTop: 50 }} />
       ) : error ? (
@@ -386,10 +500,13 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
           keyExtractor={(item, idx) => `${item.name}-${idx}`}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.card} onPress={() => openInMaps(item.mapQuery)}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.specialty}>{item.specialty}</Text>
-                <Text style={styles.address}>{item.address}</Text>
+              <View style={styles.cardContent}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.name}>{item.name}</Text>
+                  <Text style={styles.specialty}>{item.specialty}</Text>
+                  <Text style={styles.address}>{item.address}</Text>
+                </View>
+                <Ionicons name="location-outline" size={20} color="#2c3e50" />
               </View>
             </TouchableOpacity>
           )}
@@ -400,7 +517,7 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 20 },
+  container: { flex: 1, backgroundColor: '#fff', padding: 10 },
   card: {
     backgroundColor: '#e6f0fa',
     padding: 12,
@@ -430,5 +547,88 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 16,
     maxHeight: 400
-  }
+  },
+  pillContainer: {
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  pill: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    minWidth: 80,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  pillTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  pillZip: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#000',
+  },
+  
+  pillCity: {
+    fontSize: 11,
+    color: '#333',
+    textAlign: 'center',
+  },
+  zipInput: {
+    borderBottomWidth: 1,
+    borderColor: '#aaa',
+    fontSize: 16,
+    minWidth: 80,
+    color: '#000',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    backgroundColor: '#f5f7fa',
+    borderRadius: 4
+  },
+  modalBox: {
+    backgroundColor: '#fff',
+    width: '80%',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalLabel: {
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  input: {
+    borderBottomWidth: 1,
+    borderColor: '#ccc',
+    width: '60%',
+    textAlign: 'center',
+    fontSize: 18,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  cancelBtn: {
+    padding: 10,
+  },
+  saveBtn: {
+    backgroundColor: '#2c3e50',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
 });
