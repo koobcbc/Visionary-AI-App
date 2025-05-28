@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, TextInput, Text, Button, StyleSheet, Alert } from 'react-native';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
-import { getAuth } from 'firebase/auth';
+import { db, auth } from '../firebaseConfig';
 import { create } from 'react-test-renderer';
 import Header from '../components/Header';
-
-const auth = getAuth();
 
 export default function AccountScreen() {
   const [firstName, setFirstName] = useState('');

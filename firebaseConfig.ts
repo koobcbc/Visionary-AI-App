@@ -1,6 +1,7 @@
 // Import the functions you need from the SDKs you need
 
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import 'firebase/auth/react-native';
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -16,8 +17,9 @@ export const firebaseConfig = {
   appId: "1:139431081773:web:420dfd09d65abe7e0945a4"
 };
 
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
 export const storage = getStorage(app);
 
 // TODO: Add SDKs for Firebase products that you want to use
