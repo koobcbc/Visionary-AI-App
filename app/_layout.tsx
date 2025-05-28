@@ -30,6 +30,8 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="+not-found" />
+              <Stack.Screen name="login" />
+              <Stack.Screen name="signup" />
               <Stack.Screen name="chat/[chatId]" options={{ animation: 'slide_from_right' }} />
             </Stack>
           </View>

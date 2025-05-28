@@ -7,15 +7,20 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
-  Keyboard
+  Keyboard,
+  TouchableOpacity,
+  Text
 } from 'react-native';
 import AuthScreen from '../components/AuthScreen';
 import logo from '../assets/images/dermascanAI_logo_cropped.png';
+import { useRouter } from 'expo-router';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 
 export const unstable_settings = { initialRouteName: "dashboard" };
 
 export default function HomeScreen() {
+  
+  const router = useRouter();
   
   return (
     <KeyboardAvoidingView
@@ -32,8 +37,22 @@ export default function HomeScreen() {
           <View style={styles.logoContainer}>
             <Image source={logo} style={styles.logo} resizeMode="contain" />
           </View>
-          <View style={styles.formWrapper}>
-            <AuthScreen />
+          <View style={styles.buttonWrapper}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => router.push('/login')}
+            >
+              <Text style={styles.buttonText}>Log In</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, styles.secondaryButton]}
+              onPress={() => router.push('/signup')}
+            >
+              <Text style={[styles.buttonText, styles.secondaryButtonText]}>
+                Sign Up
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </TouchableWithoutFeedback>
@@ -66,5 +85,32 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     padding: 20,
     backgroundColor: '#ffffff',
-  }
+  },
+  buttonWrapper: {
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  button: {
+    backgroundColor: '#2c3e50',
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    marginBottom: 20,
+    width: '100%',
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  secondaryButton: {
+    backgroundColor: '#ffffff',
+    borderColor: '#2c3e50',
+    borderWidth: 1,
+  },
+  secondaryButtonText: {
+    color: '#2c3e50',
+  },
 });
