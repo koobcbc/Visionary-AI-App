@@ -8,12 +8,12 @@ import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 export const firebaseConfig = {
-  apiKey: "AIzaSyBlWHSZTflw67kCU2PyfiIuzUyvyuSOawg",
-  authDomain: "adsp-34002-ip07-visionary-ai.firebaseapp.com",
-  projectId: "adsp-34002-ip07-visionary-ai",
-  storageBucket: "adsp-34002-ip07-visionary-ai.firebasestorage.app",
-  messagingSenderId: "139431081773",
-  appId: "1:139431081773:web:420dfd09d65abe7e0945a4"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
