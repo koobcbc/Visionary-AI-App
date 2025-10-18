@@ -4,9 +4,10 @@ import {
   View, TextInput, Text, StyleSheet, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, Image
 } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
 import { useRouter } from 'expo-router';
-import logo from '../assets/images/dermascan_logo_transparent.png';
+import { doc, getDoc } from 'firebase/firestore';
+const logo = require('../assets/images/dermascan_logo_transparent.png');
 import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen() {
@@ -18,8 +19,22 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setError('');
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Check if user has completed profile
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        if (userData.profileCreated === true) {
+          router.push('/dashboard');
+        } else {
+          router.push('/profile-creation');
+        }
+      } else {
+        // New user without profile data
+        router.push('/profile-creation');
+      }
     } catch (err: any) {
       Alert.alert('Login Failed', err.message, [{ text: 'OK', style: 'destructive' }]);
     }

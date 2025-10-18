@@ -286,6 +286,7 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
         - If a follow-up with a healthcare provider is necessary
 
         Remove all the unnecessary parts like "Okay, here's a message you can show the user: " and quotations, etc. Give just the response that I can show the user as a message response.
+        Always start with "The model indicates ".
       `;
   
       const responseText = await getGeminiResponse(geminiPrompt);

@@ -21,8 +21,9 @@ export default function Dashboard() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [chats, setChats] = useState<any[]>([]);
   const [userName, setUserName] = useState('');
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
   const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
-  const unsubscribeRef = useRef(null);
+  const unsubscribeRef = useRef<any>(null);
 
   useEffect(() => {
     (async () => {
@@ -45,6 +46,7 @@ export default function Dashboard() {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setUserName(data.firstName || '');
+        setProfileIncomplete(data.profileCreated !== true);
       }
     };
     fetchUserName();
@@ -138,9 +140,19 @@ export default function Dashboard() {
           <View>
             <TouchableOpacity style={styles.avatar} onPress={() => setMenuVisible(!menuVisible)}>
               <Text style={styles.avatarText}>{userInitial}</Text>
+              {profileIncomplete && (
+                <View style={styles.incompleteIndicator}>
+                  <Ionicons name="warning" size={12} color="#e74c3c" />
+                </View>
+              )}
             </TouchableOpacity>
             {menuVisible && (
               <View style={styles.menu}>
+                {profileIncomplete && (
+                  <TouchableOpacity onPress={() => { setMenuVisible(false); router.push('/profile-creation'); }}>
+                    <Text style={[styles.menuItem, styles.incompleteMenuItem]}>Complete Profile</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity onPress={() => router.push('/account')}><Text style={styles.menuItem}>Account</Text></TouchableOpacity>
                 <TouchableOpacity onPress={() => router.push('/settings')}><Text style={styles.menuItem}>Settings</Text></TouchableOpacity>
                 <TouchableOpacity onPress={handleLogout}><Text style={styles.menuItem}>Logout</Text></TouchableOpacity>
@@ -185,10 +197,12 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafe', paddingHorizontal: 20 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
-  avatar: { backgroundColor: '#9db2f2', width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  avatar: { backgroundColor: '#9db2f2', width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   avatarText: { fontWeight: '700', color: '#fff', fontSize: 16 },
+  incompleteIndicator: { position: 'absolute', top: -2, right: -2, backgroundColor: '#fff', borderRadius: 8, width: 16, height: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#e74c3c' },
   menu: { backgroundColor: '#ffffff', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10, position: 'absolute', top: 48, left: 0, width: 140, zIndex: 10, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 4 }, borderWidth: 1, borderColor: '#e2e6ea' },
   menuItem: { paddingVertical: 8, fontSize: 16, color: '#333' },
+  incompleteMenuItem: { color: '#e74c3c', fontWeight: 'bold' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#2c3e50' },
   chatCard: { backgroundColor: '#eaf4fb', padding: 16, borderRadius: 10, justifyContent: 'space-between', flexDirection: 'column' },
   chatTitle: { fontSize: 16, fontWeight: '600', color: '#2c3e50', marginBottom: 6 },

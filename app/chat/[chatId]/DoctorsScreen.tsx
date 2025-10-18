@@ -325,12 +325,6 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
     return nested;
   }
 
-  const handleZipSearch = () => {
-    if (zipInput.trim()) {
-      fetchDoctors(undefined, undefined, zipInput.trim(), selectedSpecialty);
-    }
-  };
-
   const API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY;
   const genAI = new GoogleGenerativeAI(API_KEY);
 
@@ -479,11 +473,29 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
             zIndex={1000}
             zIndexInverse={3000}
           />
-            <Button title="Back" onPress={() => {
-              if (selectedClass) setSelectedClass(null);
-              else if (selectedGroup) setSelectedGroup(null);
-              else setModalVisible(false);
-            }} />
+            {/* Confirm Button */}
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={() => {
+                if (specValue) {
+                  setSelectedSpecialty(specValue);
+                  fetchDoctors(undefined, undefined, zipCode, specValue);
+                  setModalVisible(false);
+                } else {
+                  Alert.alert("Select Specialization", "Please choose a valid specialization.");
+                }
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Confirm</Text>
+            </TouchableOpacity>
+
+            {/* Optional Cancel Button */}
+            <TouchableOpacity
+              style={{ marginTop: 10 }}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={{ color: '#666', textAlign: 'center' }}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

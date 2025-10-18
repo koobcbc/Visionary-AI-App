@@ -7,7 +7,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
 import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
-import logo from '../assets/images/dermascan_logo_transparent.png';
+const logo = require('../assets/images/dermascan_logo_transparent.png');
 import { Ionicons } from '@expo/vector-icons';
 
 export default function SignupScreen() {
@@ -31,7 +31,8 @@ export default function SignupScreen() {
       const user = userCredential.user;
       await new Promise(res => setTimeout(res, 500));
       await setDoc(doc(db, 'users', user.uid), {
-        firstName, lastName, email, phoneNumber, createdAt: new Date()
+        firstName, lastName, email, phoneNumber, createdAt: new Date(),
+        profileCreated: false
       });
       Alert.alert('Success', 'Account created! Please log in.', [{ text: 'OK' }]);
       router.push('/login');
