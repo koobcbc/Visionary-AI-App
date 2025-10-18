@@ -1,50 +1,120 @@
-# Welcome to your Expo app 👋
+# DiagnosisAI
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native mobile application that provides AI-powered medical assistance and diagnosis support through intelligent chat interfaces and doctor recommendations.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **AI-Powered Chat**: Interactive chat interface with Gemini AI for medical consultations
+- **Doctor Recommendations**: Find nearby healthcare providers based on location and specialty
+- **User Authentication**: Secure signup and login with Firebase Authentication
+- **Medical Profile**: Comprehensive health history collection and management
+- **Speech-to-Text**: Voice input capabilities for hands-free interaction
+- **Real-time Chat**: Live messaging with AI medical assistant
+- **Cross-platform**: Runs on both iOS and Android
 
+## Tech Stack
+
+- **Frontend**: React Native with Expo
+- **Backend**: Firebase (Authentication, Firestore, Storage)
+- **AI**: Google Gemini API
+- **Navigation**: Expo Router
+- **State Management**: React Hooks
+- **Styling**: React Native StyleSheet
+
+## Prerequisites
+
+- Node.js (v16 or higher)
+- npm or yarn
+- Expo CLI
+- iOS Simulator (for iOS development)
+- Android Studio (for Android development)
+
+## Installation
+
+1. Clone the repository
+   ```bash
+   git clone <repository-url>
+   cd DiagnosisAI/frontend
+   ```
+
+2. Install dependencies
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. Set up environment variables
    ```bash
-    npx expo start
+   cp .env.example .env
+   ```
+   
+   Fill in your Firebase and Gemini API keys in the `.env` file:
+   ```
+   EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+   EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   EXPO_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+   EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+   EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
+   GEMINI_API_KEY=your_gemini_api_key
    ```
 
-In the output, you'll find options to open the app in a
+4. Start the development server
+   ```bash
+   npx expo start
+   ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Project Structure
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+frontend/
+├── app/                    # Main application screens
+│   ├── (tabs)/            # Tab navigation screens
+│   ├── chat/              # Chat-related screens
+│   └── ...
+├── components/            # Reusable UI components
+├── assets/               # Images, fonts, and static files
+├── utils/                # Utility functions
+├── types/                # TypeScript type definitions
+└── firebaseConfig.ts     # Firebase configuration
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Development
 
-## Learn more
+### Running the App
 
-To learn more about developing your project with Expo, look at the following resources:
+- **iOS Simulator**: Press `i` in the terminal or scan QR code with Expo Go
+- **Android Emulator**: Press `a` in the terminal
+- **Physical Device**: Install Expo Go and scan the QR code
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Key Features Implementation
 
-## Join the community
+- **Authentication**: Firebase Auth with email/password
+- **Database**: Firestore for user data and chat history
+- **AI Integration**: Google Gemini for medical assistance
+- **Profile Management**: Multi-step medical history collection
+- **Real-time Updates**: Live chat and data synchronization
 
-Join our community of developers creating universal apps.
+## Environment Variables
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+The application requires the following environment variables:
+
+- `EXPO_PUBLIC_FIREBASE_*`: Firebase configuration
+- `GEMINI_API_KEY`: Google Gemini API key for AI features
+
+See `.env.example` for the complete list of required variables.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For support and questions, please open an issue in the GitHub repository.
