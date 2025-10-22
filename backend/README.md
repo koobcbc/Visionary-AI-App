@@ -80,7 +80,7 @@ docker run -d \
   --name healthcare-api \
   -p 8080:8080 \
   -e GCP_PROJECT_ID=your-project-id \
-  -e SKIN_CV_API=https://skin-disease-cv-model-139431081773.us-central1.run.app/predict \
+  -e SKIN_CV_API=https://your-skin-cv-api.com/predict \
   -e ORAL_CV_API=https://your-oral-cv-api.com/predict \
   -v $(pwd)/service-account.json:/app/service-account.json:ro \
   healthcare-diagnostic-api
@@ -142,7 +142,7 @@ gcloud run deploy healthcare-diagnostic-api \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-env-vars="GCP_PROJECT_ID=YOUR_PROJECT_ID,SKIN_CV_API=https://skin-disease-cv-model-139431081773.us-central1.run.app/predict,ORAL_CV_API=YOUR_ORAL_CV_API" \
+  --set-env-vars="GCP_PROJECT_ID=YOUR_PROJECT_ID,SKIN_CV_API=YOUR_SKIN_CV_API,ORAL_CV_API=YOUR_ORAL_CV_API" \
   --memory=2Gi \
   --cpu=2 \
   --timeout=300 \
@@ -152,29 +152,6 @@ gcloud run deploy healthcare-diagnostic-api \
 2. **Get the deployed URL:**
 ```bash
 gcloud run services describe healthcare-diagnostic-api --region=us-central1 --format="value(status.url)"
-```
-
-### Deploy to Google Kubernetes Engine (GKE)
-
-1. **Create GKE cluster:**
-```bash
-gcloud container clusters create healthcare-api-cluster \
-  --zone=us-central1-a \
-  --num-nodes=3 \
-  --machine-type=e2-standard-2 \
-  --enable-autoscaling \
-  --min-nodes=1 \
-  --max-nodes=10
-```
-
-2. **Deploy using kubectl:**
-```bash
-# Apply the Kubernetes configuration
-kubectl apply -f k8s/
-
-# Check deployment status
-kubectl get pods
-kubectl get services
 ```
 
 ## 🔧 Environment Setup
@@ -511,7 +488,6 @@ Backend/
 │   │   └── validation/          # Input validation
 │   ├── security/                 # Security and guardrails
 │   └── utils/                    # Utility functions
-├── k8s/                          # Kubernetes deployment files
 ├── tests/                        # Test files
 ├── requirements.txt              # Python dependencies
 ├── Dockerfile                    # Docker configuration
