@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  FlatList, Alert, TouchableWithoutFeedback, Keyboard
+  FlatList, Alert, TouchableWithoutFeedback, Keyboard, Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -14,6 +14,7 @@ import { db } from '../firebaseConfig';
 import { getAuth, signOut } from 'firebase/auth';
 import { SwipeListView } from 'react-native-swipe-list-view';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const auth = getAuth();
 
@@ -22,10 +23,25 @@ export default function Dashboard() {
   const [chats, setChats] = useState<any[]>([]);
   const [userName, setUserName] = useState('');
   const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [activeTab, setActiveTab] = useState<'skin' | 'dental'>('skin');
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
   const unsubscribeRef = useRef<any>(null);
 
   useEffect(() => {
+    // Load saved tab preference
+    const loadTabPreference = async () => {
+      try {
+        const savedTab = await AsyncStorage.getItem('activeTab');
+        if (savedTab === 'skin' || savedTab === 'dental') {
+          setActiveTab(savedTab);
+        }
+      } catch (error) {
+        console.log('Error loading tab preference:', error);
+      }
+    };
+    loadTabPreference();
+
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
@@ -77,7 +93,24 @@ export default function Dashboard() {
     }
   };
 
-  const handleNewChat = async () => {
+  const saveTabPreference = async (tab: 'skin' | 'dental') => {
+    try {
+      await AsyncStorage.setItem('activeTab', tab);
+    } catch (error) {
+      console.log('Error saving tab preference:', error);
+    }
+  };
+
+  const handleTabChange = (tab: 'skin' | 'dental') => {
+    setActiveTab(tab);
+    saveTabPreference(tab);
+  };
+
+  const handleNewChat = () => {
+    setShowCategoryModal(true);
+  };
+
+  const createChat = async (category: 'skin' | 'dental') => {
     try {
       const user = auth.currentUser;
       if (!user) throw new Error("User not authenticated.");
@@ -85,6 +118,7 @@ export default function Dashboard() {
       const docRef = await addDoc(collection(db, "chats"), {
         title: "New Chat",
         userId: user.uid,
+        category: category,
         createdAt: serverTimestamp(),
         last_message_at: serverTimestamp(),
       });
@@ -101,6 +135,9 @@ export default function Dashboard() {
         last_message_at: serverTimestamp()
       });
 
+      // Switch to the selected category tab
+      handleTabChange(category);
+      setShowCategoryModal(false);
       router.push(`/chat/${docRef.id}`);
     } catch (error) {
       Alert.alert("Error", "Failed to create chat.");
@@ -110,6 +147,9 @@ export default function Dashboard() {
   const openChat = (chat: any) => {
     router.push(`/chat/${chat.id}`);
   };
+
+  // Filter chats by active category
+  const filteredChats = chats.filter(chat => chat.category === activeTab);
 
   const handleDeleteChat = (chatId: string) => {
     Alert.alert(
@@ -165,8 +205,39 @@ export default function Dashboard() {
           </TouchableOpacity>
         </View>
 
+        {/* Category Tabs */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'skin' && styles.activeTab]}
+            onPress={() => handleTabChange('skin')}
+          >
+            <Ionicons 
+              name="medical" 
+              size={20} 
+              color={activeTab === 'skin' ? '#fff' : '#2c3e50'} 
+            />
+            <Text style={[styles.tabText, activeTab === 'skin' && styles.activeTabText]}>
+              Skin
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'dental' && styles.activeTab]}
+            onPress={() => handleTabChange('dental')}
+          >
+            <Ionicons 
+              name="happy" 
+              size={20} 
+              color={activeTab === 'dental' ? '#fff' : '#2c3e50'} 
+            />
+            <Text style={[styles.tabText, activeTab === 'dental' && styles.activeTabText]}>
+              Dental
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <SwipeListView
-          data={chats}
+          data={filteredChats}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.rowFront}>
@@ -189,6 +260,50 @@ export default function Dashboard() {
           previewOpenValue={-40}
           previewOpenDelay={300}
         />
+
+        {/* Category Selection Modal */}
+        <Modal
+          visible={showCategoryModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowCategoryModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Choose Chat Category</Text>
+              <Text style={styles.modalSubtitle}>What type of consultation do you need?</Text>
+              
+              <TouchableOpacity
+                style={styles.categoryOption}
+                onPress={() => createChat('skin')}
+              >
+                <Ionicons name="medical" size={24} color="#2c3e50" />
+                <View style={styles.categoryTextContainer}>
+                  <Text style={styles.categoryTitle}>Skin Consultation</Text>
+                  <Text style={styles.categoryDescription}>Dermatology and skin-related issues</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.categoryOption}
+                onPress={() => createChat('dental')}
+              >
+                <Ionicons name="happy" size={24} color="#2c3e50" />
+                <View style={styles.categoryTextContainer}>
+                  <Text style={styles.categoryTitle}>Dental Consultation</Text>
+                  <Text style={styles.categoryDescription}>Dental and oral health issues</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowCategoryModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -204,6 +319,15 @@ const styles = StyleSheet.create({
   menuItem: { paddingVertical: 8, fontSize: 16, color: '#333' },
   incompleteMenuItem: { color: '#e74c3c', fontWeight: 'bold' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#2c3e50' },
+  
+  // Tab styles
+  tabContainer: { flexDirection: 'row', marginVertical: 16, backgroundColor: '#ffffff', borderRadius: 12, padding: 4 },
+  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8 },
+  activeTab: { backgroundColor: '#2c3e50' },
+  tabText: { fontSize: 16, fontWeight: '600', color: '#2c3e50', marginLeft: 8 },
+  activeTabText: { color: '#fff' },
+  
+  // Chat styles
   chatCard: { backgroundColor: '#eaf4fb', padding: 16, borderRadius: 10, justifyContent: 'space-between', flexDirection: 'column' },
   chatTitle: { fontSize: 16, fontWeight: '600', color: '#2c3e50', marginBottom: 6 },
   timestamp: { fontSize: 12, color: '#7f8c8d' },
@@ -211,4 +335,16 @@ const styles = StyleSheet.create({
   rowBack: { alignItems: 'center', backgroundColor: '#ff3b30', flex: 1, flexDirection: 'row', justifyContent: 'flex-end', paddingRight: 20, borderRadius: 10, marginBottom: 12 },
   deleteButton: { alignItems: 'center', justifyContent: 'center', width: 75, height: '100%' },
   deleteText: { color: '#fff', fontWeight: 'bold' },
+  
+  // Modal styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { backgroundColor: '#ffffff', borderRadius: 16, padding: 24, marginHorizontal: 20, width: '90%', maxWidth: 400 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#2c3e50', textAlign: 'center', marginBottom: 8 },
+  modalSubtitle: { fontSize: 16, color: '#7f8c8d', textAlign: 'center', marginBottom: 24 },
+  categoryOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 16, backgroundColor: '#f8f9fa', borderRadius: 12, marginBottom: 12 },
+  categoryTextContainer: { marginLeft: 16, flex: 1 },
+  categoryTitle: { fontSize: 16, fontWeight: '600', color: '#2c3e50', marginBottom: 4 },
+  categoryDescription: { fontSize: 14, color: '#7f8c8d' },
+  cancelButton: { marginTop: 16, paddingVertical: 12, alignItems: 'center' },
+  cancelButtonText: { fontSize: 16, color: '#7f8c8d' },
 });

@@ -25,7 +25,7 @@ type TaxonomyEntry = {
   Grouping: string;
   Classification: string;
   Specialization: string;
-  DisplayName: string;
+  "Display Name": string;
   Code: string;
 };
 
@@ -50,15 +50,29 @@ type Summary = {
   specialty: string;
 };
 
-export default function DoctorsScreen({ summary }: { summary: Summary }) {
+export default function DoctorsScreen({ summary, chatCategory }: { summary: Summary; chatCategory?: 'skin' | 'dental' | null }) {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [zipCode, setZipCode] = useState('');
-  const [city, setCity] = useState('');
+  const [zipCode, setZipCode] = useState<string>('');
+  const [city, setCity] = useState<string>('');
   const [zipInput, setZipInput] = useState('');
-  const [selectedSpecialty, setSelectedSpecialty] = useState(summary.specialty || '');
+  const [selectedSpecialty, setSelectedSpecialty] = useState(() => {
+    // If summary has a specialty, use it; otherwise use chat category default
+    if (summary.specialty) {
+      return summary.specialty;
+    }
+    
+    // Set default based on chat category
+    if (chatCategory === 'skin') {
+      return 'Dermatology';
+    } else if (chatCategory === 'dental') {
+      return 'General Practice';
+    }
+    
+    return '';
+  });
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
@@ -67,18 +81,18 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
 
   // Dropdown states
   const [groupOpen, setGroupOpen] = useState(false);
-  const [groupValue, setGroupValue] = useState(null);
-  const [groupItems, setGroupItems] = useState([]);
+  const [groupValue, setGroupValue] = useState<string | null>(null);
+  const [groupItems, setGroupItems] = useState<{label: string; value: string}[]>([]);
 
   const [classOpen, setClassOpen] = useState(false);
-  const [classValue, setClassValue] = useState(null);
-  const [classItems, setClassItems] = useState([]);
+  const [classValue, setClassValue] = useState<string | null>(null);
+  const [classItems, setClassItems] = useState<{label: string; value: string}[]>([]);
 
   const [specOpen, setSpecOpen] = useState(false);
-  const [specValue, setSpecValue] = useState(null);
-  const [specItems, setSpecItems] = useState([]);
+  const [specValue, setSpecValue] = useState<string | null>(null);
+  const [specItems, setSpecItems] = useState<{label: string; value: string}[]>([]);
 
-  const [nestedSpecialties, setNestedSpecialties] = useState({});
+  const [nestedSpecialties, setNestedSpecialties] = useState<NestedSpecialties>({});
 
   // zip code
   const [editingZip, setEditingZip] = useState(false);
@@ -88,17 +102,20 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
     setNestedSpecialties(tree);
     setGroupItems(Object.keys(tree).map(k => ({ label: k, value: k })));
 
+    // Determine which specialty to use for matching
+    const specialtyToMatch = summary.specialty || selectedSpecialty;
+    
     const matched =
       taxonomy.find(
         (entry) =>
           entry["Specialization"] &&
-          entry["Specialization"].toLowerCase() === summary.specialty.toLowerCase()
+          entry["Specialization"].toLowerCase() === specialtyToMatch.toLowerCase()
       ) ||
       taxonomy.find(
         (entry) =>
           entry["Classification"] &&
           entry["Specialization"] === "" &&
-          entry["Classification"].toLowerCase() === summary.specialty.toLowerCase()
+          entry["Classification"].toLowerCase() === specialtyToMatch.toLowerCase()
       );
       
     if (matched) {
@@ -107,7 +124,7 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
       setSpecValue(matched.Specialization || matched.Classification); // This is used as dropdown label
       setSelectedSpecialty(matched.Specialization || matched.Classification); // Used for search
     }
-  }, []);
+  }, [summary.specialty, chatCategory]);
 
   useEffect(() => {
     const fetchZipFromUser = async () => {
@@ -130,7 +147,7 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
                 const reverse = await Location.reverseGeocodeAsync({ latitude, longitude });
                 const place = reverse[0];
                 if (place?.city || place?.subregion || place?.region) {
-                  setCity(place.city || place.subregion || place.region);
+                  setCity(place.city || place.subregion || place.region || '');
                 }
               }
 
@@ -155,7 +172,7 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
   function buildNestedSpecialties(taxonomy: TaxonomyEntry[]): NestedSpecialties {
     const nested: NestedSpecialties = {};
   
-    taxonomy.forEach(({ Grouping, Classification, Specialization, DisplayName, Code }) => {
+    taxonomy.forEach(({ Grouping, Classification, Specialization, "Display Name": DisplayName, Code }) => {
       if (!Grouping || !Classification) return;
   
       if (!nested[Grouping]) nested[Grouping] = {};
@@ -184,7 +201,8 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
     }
   }, [groupValue]);
 
-  function setGroupValueInDropdown (value) {
+  function setGroupValueInDropdown(callback: any) {
+    const value = typeof callback === 'function' ? callback(groupValue) : callback;
     setGroupValue(value);
     setHasChangedDefaults(true);
   }
@@ -193,7 +211,7 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
     if (groupValue && classValue) {
       const specs = nestedSpecialties[groupValue][classValue];
       setSpecItems(
-        specs.map((s) => ({
+        specs.map((s: SpecializationEntry) => ({
           label: s.name,
           value: s.name, // ensures uniqueness
         }))
@@ -202,7 +220,9 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
   }, [classValue]);
 
   useEffect(() => {
-    if (specValue) fetchDoctors(undefined, undefined, undefined, specValue);
+    if (specValue && !loading) {
+      fetchDoctors(undefined, undefined, undefined, specValue);
+    }
   }, [specValue]);
 
   const requestLocation = async () => {
@@ -242,7 +262,7 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
           }
         };
         if (city || subregion || region) {
-          setCity(city || subregion || region); // fallback if city is undefined
+          setCity(city || subregion || region || ''); // fallback if city is undefined
         }
       }
 
@@ -261,19 +281,23 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
     setLoading(true);
     try {
       let selected = specialty || selectedSpecialty;
-      let url = `https://npiregistry.cms.hhs.gov/api/?version=2.1&taxonomy_description=${encodeURIComponent(selected)}&limit=20`;
+      
+      // Use a more reliable CORS proxy
+      let url = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://npiregistry.cms.hhs.gov/api/?version=2.1&taxonomy_description=${selected}&limit=20`)}`;
 
       if (zip) {
-        url += `&postal_code=${zip}`;
+        console.log("zip", zip)
+        url = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://npiregistry.cms.hhs.gov/api/?version=2.1&taxonomy_description=${selected}&limit=20&postal_code=${zip}`)}`;
       } else if (lat && lon) {
         const geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
         if (geo[0]?.postalCode) {
-          url += `&postal_code=${geo[0].postalCode}`;
+          console.log("zip from geo", geo[0].postalCode)
+          url = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://npiregistry.cms.hhs.gov/api/?version=2.1&taxonomy_description=${selected}&limit=20&postal_code=${geo[0].postalCode}`)}`;
         } else {
           throw new Error("Failed to determine postal code.");
         }
       } else {
-        url += `&state=${STATE}`;
+        url = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://npiregistry.cms.hhs.gov/api/?version=2.1&taxonomy_description=${selected}&limit=20&state=${STATE}`)}`;
       }
 
       const res = await fetch(url);
@@ -304,26 +328,6 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
       setLoading(false);
     }
   };
-
-  function buildNestedSpecialties(taxonomy: TaxonomyEntry[]): NestedSpecialties {
-    const nested: NestedSpecialties = {};
-  
-    taxonomy.forEach(({ Grouping, Classification, Specialization, DisplayName, Code }) => {
-      if (!Grouping || !Classification) return;
-  
-      if (!nested[Grouping]) nested[Grouping] = {};
-      if (!nested[Grouping][Classification]) nested[Grouping][Classification] = [];
-  
-      nested[Grouping][Classification].push({
-        name: Specialization || Classification,
-        displayName: DisplayName,
-        code: Code,
-        specialization: Specialization,
-      });
-    });
-  
-    return nested;
-  }
 
   const API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY;
   const genAI = new GoogleGenerativeAI(API_KEY);
@@ -358,6 +362,7 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
   }
 
   console.log(zipCode, city)
+  console.log("doctors", doctors)
   return (
     <View style={styles.container}>
 
@@ -428,7 +433,7 @@ export default function DoctorsScreen({ summary }: { summary: Summary }) {
 
       <View style={styles.specialtyContainer}>
         <Text style={styles.specialtyText}>
-          Specialty: {capitalize(specValue)}
+          Specialty: {capitalize(specValue || '')}
         </Text>
         <TouchableOpacity onPress={() => setModalVisible(true)}>
           <Ionicons name="pencil" size={20} color="black" style={styles.iconStyle} />

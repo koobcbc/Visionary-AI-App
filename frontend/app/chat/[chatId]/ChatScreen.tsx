@@ -52,6 +52,7 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const settingsSlideAnim = useRef(new Animated.Value(300)).current;
   const [chatTitle, setChatTitle] = useState('Chat');
+  const [chatCategory, setChatCategory] = useState<'skin' | 'dental' | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [summary, setSummary] = useState<Summary>({
     diagnosis: "Not enough information",
@@ -92,6 +93,7 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setChatTitle(data.title || 'Chat');
+        setChatCategory(data.category || null);
       }
     });
   
@@ -625,7 +627,7 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
 
                 <View style={{ flex: 1 }}>
                   {renderExpandableCard('Summary', 'summary', () => <SummaryScreen summary={summary} />)}
-                  {renderExpandableCard('Doctors Near Me', 'doctors', () => <DoctorsScreen summary={summary} />)}
+                  {renderExpandableCard('Doctors Near Me', 'doctors', () => <DoctorsScreen summary={summary} chatCategory={chatCategory} />)}
                   {/* <TouchableOpacity style={styles.leaveButton} onPress={() => {}}>
                     <Text style={styles.leaveButtonText}>Leave Chat</Text>
                   </TouchableOpacity> */}

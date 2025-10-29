@@ -27,6 +27,7 @@
     "@react-native-firebase/firestore": "^21.14.0",
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
+    "axios": "^1.13.1",
     "babel-plugin-dotenv": "^0.1.1",
     "cors": "^2.8.5",
     "csvtojson": "^2.0.10",
