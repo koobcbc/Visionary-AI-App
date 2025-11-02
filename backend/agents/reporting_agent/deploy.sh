@@ -7,7 +7,7 @@
 PROJECT_ID="adsp-34002-ip07-visionary-ai"  # Your GCP project ID
 SERVICE_NAME="reporting-agent"
 REGION="us-central1"  # Change to your preferred region
-GOOGLE_API_KEY="AIzaSyAy1CwV1V6MsAbBlWTL6VQfmHuqSMAPFjQ"  # Your Gemini API key
+GOOGLE_API_KEY="api_key"  # Your Gemini API key
 
 # Colors for output
 GREEN='\033[0;32m'
