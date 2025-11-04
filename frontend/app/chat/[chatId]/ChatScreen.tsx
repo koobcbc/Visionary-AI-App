@@ -567,7 +567,7 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
                 
                     <View style={[styles.messageBubble, item.sender === 'bot' ? styles.botBubble : styles.userBubble]}>
                       {item.sender === 'bot' && (
-                        <Text style={styles.sender}>Dermascan AI</Text>
+                        <Text style={styles.sender}>Viscura</Text>
                       )}
                       {item.image && <Image source={{ uri: item.image }} style={styles.imagePreview} />}
                       <Markdown style={markdownStyles}>{item.text}</Markdown>

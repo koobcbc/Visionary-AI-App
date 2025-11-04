@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, TextInput, Text, Button, StyleSheet, Alert } from 'react-native';
+import { View, TextInput, Text, Button, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { getAuth } from 'firebase/auth';
@@ -90,7 +90,9 @@ export default function AccountScreen() {
           selectTextOnFocus={false}
         />
         <Text style={styles.note}>Contact support to update phone or email.</Text>
-        <Button title="Update Profile" onPress={handleUpdate} />
+        <TouchableOpacity style={styles.updateButton} onPress={handleUpdate} activeOpacity={0.9}>
+          <Text style={styles.updateButtonText}>Update Profile</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -114,5 +116,17 @@ const styles = StyleSheet.create({
     color: '#999',
     marginBottom: 10,
     marginTop: -6
+  },
+  updateButton: {
+    backgroundColor: '#2c3e50',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8
+  },
+  updateButtonText: {
+    color: '#fff',
+    fontWeight: '600'
   }
 });
