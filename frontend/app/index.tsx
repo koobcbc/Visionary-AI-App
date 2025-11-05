@@ -12,7 +12,7 @@ import {
   Text
 } from 'react-native';
 import AuthScreen from '../components/AuthScreen';
-import logo from '../assets/images/dermascanAI_logo_cropped.png';
+const logo = require('../assets/images/colored-logo.png');
 import { useRouter } from 'expo-router';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 40,
     paddingTop: 10,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#DBEDEC',
   },
   logoContainer: {
     marginBottom: 20,
@@ -76,8 +76,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    width: 250,
-    height: 250,
+    width: 220,
+    height: 220,
     borderRadius: 10
   },
   formWrapper: {
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   button: {
-    backgroundColor: '#2c3e50',
+    backgroundColor: '#4a90e2',
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 12,
@@ -107,10 +107,10 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     backgroundColor: '#ffffff',
-    borderColor: '#2c3e50',
+    borderColor: '#4a90e2',
     borderWidth: 1,
   },
   secondaryButtonText: {
-    color: '#2c3e50',
+    color: '#4a90e2',
   },
 });

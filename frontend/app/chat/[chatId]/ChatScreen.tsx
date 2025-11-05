@@ -14,7 +14,8 @@ import { useRouter } from 'expo-router';
 import SummaryScreen from './SummaryScreen';
 import DoctorsScreen from './DoctorsScreen';
 import Markdown from 'react-native-markdown-display';
-import logo from '../../../assets/images/chat-bot-icon.png';
+const logo = require('../../../assets/images/transparent-logo-v.png');
+const headerLogo = require('../../../assets/images/transparent-logo.png');
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -492,43 +493,9 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
                 <TouchableOpacity onPress={() => router.replace('/dashboard')}>
                   <Ionicons name="chevron-back" size={28} color="#000" />
                 </TouchableOpacity>
-                {/* ChatTitle */}
-                <TouchableOpacity onPress={() => setIsEditingTitle(true)} activeOpacity={0.7}>
-                  <Text style={styles.chatTitle}>{chatTitle}</Text>
-                </TouchableOpacity>
-
-                {/* Modal for editing title */}
-                <Modal visible={isEditingTitle} transparent animationType="fade">
-                  <View style={styles.modalOverlay}>
-                    <View style={styles.modalBox}>
-                      <Text style={styles.modalLabel}>Edit Chat Title</Text>
-                      <TextInput
-                        style={styles.titleInput}
-                        value={newTitle}
-                        onChangeText={setNewTitle}
-                        placeholder={chatTitle}
-                        autoFocus
-                      />
-                      <View style={styles.modalButtons}>
-                        <TouchableOpacity onPress={() => setIsEditingTitle(false)} style={styles.cancelBtn}>
-                          <Text style={{ color: '#555' }}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={async () => {
-                            if (newTitle.trim()) {
-                              await renameChatTitle();
-                              setIsEditingTitle(false);
-                            }
-                          }}
-                          style={styles.saveBtn}
-                        >
-                          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Save</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                </Modal>
-
+                <View style={styles.headerLogoContainer}>
+                  <Image source={headerLogo} style={styles.headerLogo} resizeMode="contain" />
+                </View>
                 <View style={styles.headerIcons}>
                   <TouchableOpacity onPress={openDrawer}>
                     <MaterialIcons name="more-vert" size={24} color="#000" />
@@ -675,14 +642,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 20,
+    paddingTop: 20,
     paddingHorizontal: 16,
     backgroundColor: '#f9fafe',
   },
-  chatTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
+  headerLogoContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerLogo: {
+    width: 140,
+    height: 60,
   },
   headerIcons: {
     flexDirection: 'row',
@@ -698,7 +670,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   messageBubble: {
-    maxWidth: '72%',
+    maxWidth: '80%',
     padding: 12,
     borderRadius: 16,
     shadowColor: '#000',

@@ -7,7 +7,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
 import { useRouter } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
-const logo = require('../assets/images/dermascan_logo_transparent.png');
+const logo = require('../assets/images/colored-logo.png');
 import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen() {
@@ -22,19 +22,8 @@ export default function LoginScreen() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Check if user has completed profile
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        if (userData.profileCreated === true) {
-          router.push('/dashboard');
-        } else {
-          router.push('/profile-creation');
-        }
-      } else {
-        // New user without profile data
-        router.push('/profile-creation');
-      }
+      // Navigate to user dashboard for all authenticated users
+      router.push('/user-dashboard');
     } catch (err: any) {
       Alert.alert('Login Failed', err.message, [{ text: 'OK', style: 'destructive' }]);
     }
@@ -47,7 +36,7 @@ export default function LoginScreen() {
           <View style={styles.container}>
             {/* Back Button */}
             <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
-              <Ionicons name="arrow-back" size={24} color="#2c3e50" />
+              <Ionicons name="arrow-back" size={24} color="#4a90e2" />
             </TouchableOpacity>
             <Image source={logo} style={styles.logo} resizeMode="contain" />
             <TextInput placeholder="Email" style={styles.input} placeholderTextColor="#666" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
@@ -67,7 +56,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: { flexGrow: 1, justifyContent: 'center' },
+  scrollContainer: { flexGrow: 1, justifyContent: 'center', backgroundColor: '#DBEDEC' },
   logo: {
     width: 120,
     height: 120,
@@ -82,12 +71,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9f9f9', color: '#000'
   },
   authButton: {
-    width: '100%', height: 50, backgroundColor: '#2c3e50',
+    width: '100%', height: 50, backgroundColor: '#4a90e2',
     borderRadius: 12, justifyContent: 'center', alignItems: 'center',
     marginBottom: 12
   },
   authButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  toggleText: { color: '#2c3e50', fontSize: 14, marginTop: 8 },
+  toggleText: { color: '#4a90e2', fontSize: 14, marginTop: 8 },
   error: { color: 'red', marginTop: 10, textAlign: 'center' },
   backButton: {
     position: 'absolute',

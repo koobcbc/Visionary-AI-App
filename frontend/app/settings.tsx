@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Switch, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, Switch, StyleSheet, Alert, TouchableOpacity, Image } from 'react-native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+
+const logo = require('../assets/images/transparent-logo.png');
 
 export default function SettingsScreen() {
   const [locationEnabled, setLocationEnabled] = useState(false);
@@ -51,6 +53,9 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.logoHeader}>
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
+      </View>
       {/* Back Button */}
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color="#333" />
@@ -73,6 +78,16 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#fff' },
+  logoHeader: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 20,
+    paddingBottom: 12,
+  },
+  logo: {
+    width: 140,
+    height: 60,
+  },
   backButton: {
     marginBottom: 12,
   },

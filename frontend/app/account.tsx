@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, TextInput, Text, Button, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, TextInput, Text, Button, StyleSheet, Alert, TouchableOpacity, Image } from 'react-native';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { getAuth } from 'firebase/auth';
 import { create } from 'react-test-renderer';
 import Header from '../components/Header';
+
+const logo = require('../assets/images/transparent-logo.png');
 
 const auth = getAuth();
 
@@ -68,6 +70,9 @@ export default function AccountScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.logoHeader}>
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
+      </View>
       <Header title="Account" />
       <View style={styles.inputContainer}>
         <Text style={styles.label}>First Name</Text>
@@ -100,6 +105,17 @@ export default function AccountScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f2f2f7' },
+  logoHeader: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 20,
+    paddingBottom: 12,
+    backgroundColor: '#f2f2f7',
+  },
+  logo: {
+    width: 140,
+    height: 60,
+  },
   inputContainer: { paddingHorizontal: 20 },
   label: { marginTop: 10, marginBottom: 4, fontWeight: 'bold' },
   input: {
@@ -118,7 +134,7 @@ const styles = StyleSheet.create({
     marginTop: -6
   },
   updateButton: {
-    backgroundColor: '#2c3e50',
+    backgroundColor: '#4a90e2',
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',

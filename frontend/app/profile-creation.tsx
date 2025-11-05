@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { getAuth } from 'firebase/auth';
-const logo = require('../assets/images/dermascan_logo_transparent.png');
+const logo = require('../assets/images/transparent-logo.png');
 
 const auth = getAuth();
 
@@ -134,7 +134,7 @@ export default function ProfileCreationScreen() {
           profileSkippedAt: new Date()
         }, { merge: true });
       }
-      router.replace('/dashboard');
+      router.replace('/user-dashboard');
     } catch (error) {
       Alert.alert('Error', 'Failed to save profile status');
     } finally {
@@ -158,7 +158,7 @@ export default function ProfileCreationScreen() {
           }
         }, { merge: true });
       }
-      router.replace('/dashboard');
+      router.replace('/user-dashboard');
     } catch (error) {
       Alert.alert('Error', 'Failed to save profile');
     } finally {
