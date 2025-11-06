@@ -122,7 +122,7 @@ export default function CategorySelectionScreen() {
         </View>
 
         <View style={styles.content}>
-          <Text style={styles.title}>Choose Your Consultation Type</Text>
+          <Text style={styles.title}>Choose Your Consultation Category</Text>
           <Text style={styles.subtitle}>Select the type of medical consultation you need</Text>
 
           <View style={styles.cardContainer}>
@@ -173,7 +173,7 @@ export default function CategorySelectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f7ff',
+    backgroundColor: '#DBEDEC',
     paddingHorizontal: 20,
     paddingBottom: 80,
   },
@@ -233,8 +233,8 @@ const styles = StyleSheet.create({
     elevation: 16,
     shadowColor: '#000',
     shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
     borderWidth: 1,
     borderColor: '#e2e6ea',
   },
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Platform.select({
-      ios: 24,
+      ios: 20,
       default: 28,
     }),
     fontWeight: '700',
@@ -271,11 +271,11 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: Platform.select({
-      ios: 14,
+      ios: 12,
       default: 16,
     }),
     color: '#7f8c8d',
-    marginBottom: 48,
+    marginBottom: 38,
     textAlign: 'center',
     paddingHorizontal: 20,
   },
@@ -283,9 +283,10 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     gap: 20,
+    alignItems: 'center',
   },
   categoryCard: {
-    width: '100%',
+    width: '89%',
     borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
   },
   cardImageSection: {
     width: '100%',
-    height: 220,
+    height: 160,
     position: 'relative',
     backgroundColor: '#f8f9fa',
     alignItems: 'center',
@@ -317,19 +318,20 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    // backgroundColor: 'rgba(0, 0, 0, 0.15)',
   },
   cardContent: {
-    padding: 24,
-    paddingBottom: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    padding: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    backgroundColor: '#8ed0dc',
     borderBottomLeftRadius: 18,
     borderBottomRightRadius: 18,
   },
   categoryCardTitle: {
     color: '#fff',
     fontSize: Platform.select({
-      ios: 28,
+      ios: 25,
       default: 32,
     }),
     fontWeight: '700',

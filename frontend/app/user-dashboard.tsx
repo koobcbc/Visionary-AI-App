@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  TouchableWithoutFeedback, Keyboard, Alert, Image, ScrollView, Modal, Platform
+  TouchableWithoutFeedback, Keyboard, Alert, Image, ScrollView, Modal, Platform, TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -33,6 +33,7 @@ export default function UserDashboardScreen() {
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [diagnosisCards, setDiagnosisCards] = useState<DiagnosisCard[]>([]);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
 
   const fetchUserName = async () => {
@@ -159,6 +160,18 @@ export default function UserDashboardScreen() {
 
         <View style={styles.listPanel}>
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={styles.searchContainer}>
+              <View style={styles.searchBox}>
+                <Ionicons name="search" size={20} color="#7f8c8d" style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search"
+                  placeholderTextColor="#7f8c8d"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+              </View>
+            </View>
             <View style={styles.mainSection}>
               <View style={styles.avatarSection}>
                 <View style={styles.titleContainer}>
@@ -293,7 +306,7 @@ export default function UserDashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f7ff',
+    backgroundColor: '#DBEDEC',
   },
   header: {
     flexDirection: 'row',
@@ -386,10 +399,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e8f0',
     marginHorizontal: 0,
-    marginBottom: 80,
+    marginBottom: 40,
   },
   content: {
     flex: 1,
+  },
+  searchContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#e0e8f0',
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: Platform.select({
+      ios: 14,
+      default: 16,
+    }),
+    color: '#2c3e50',
+    fontFamily: 'NotoSans_400Regular',
+    padding: 0,
   },
   mainSection: {
     flexDirection: 'row',
@@ -419,7 +460,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Platform.select({
-      ios: 21,
+      ios: 19,
       default: 25,
     }),
     fontWeight: '700',

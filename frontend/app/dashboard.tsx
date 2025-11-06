@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  FlatList, Alert, TouchableWithoutFeedback, Keyboard, Image
+  FlatList, Alert, TouchableWithoutFeedback, Keyboard, Image, ImageBackground
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -16,6 +16,8 @@ import { SwipeListView } from 'react-native-swipe-list-view';
 import * as Location from 'expo-location';
 
 const logo = require('../assets/images/transparent-logo.png');
+const skinImage = require('../assets/images/skin_no_bg.png');
+const dentalImage = require('../assets/images/dental_no_bg.png');
 
 const auth = getAuth();
 
@@ -238,6 +240,13 @@ export default function Dashboard() {
               previewOpenDelay={300}
             />
           )}
+          
+          {/* Background Image */}
+          <Image
+            source={category === 'skin' ? skinImage : dentalImage}
+            style={styles.backgroundImage}
+            resizeMode="cover"
+          />
         </View>
       </View>
     </TouchableWithoutFeedback>
@@ -245,7 +254,7 @@ export default function Dashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f0f7ff', paddingHorizontal: 20 },
+  container: { flex: 1, backgroundColor: '#DBEDEC', paddingHorizontal: 20 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 20, paddingTop: 20, zIndex: 1000, position: 'relative' },
   backButton: {
     padding: 4,
@@ -303,5 +312,28 @@ const styles = StyleSheet.create({
   emptyCtaText: { color: '#fff', fontWeight: '600', marginLeft: 8 },
 
   // List panel wrapper
-  listPanel: { flex: 1, backgroundColor: '#ffffff', borderRadius: 12, padding: 12, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, borderWidth: 1, borderColor: '#e0e8f0' }
+  listPanel: { 
+    flex: 1, 
+    backgroundColor: '#ffffff', 
+    borderRadius: 12, 
+    padding: 12, 
+    shadowColor: '#000', 
+    shadowOpacity: 0.06, 
+    shadowRadius: 6, 
+    shadowOffset: { width: 0, height: 3 }, 
+    borderWidth: 1, 
+    borderColor: '#e0e8f0',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  backgroundImage: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    width: '100%',
+    height: 200,
+    opacity: 0.5,
+    zIndex: -1,
+  },
 });

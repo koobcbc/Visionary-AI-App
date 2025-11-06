@@ -1,12 +1,13 @@
 // app/_layout.tsx
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { SafeAreaView, View, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
+import { setupErrorFilter } from '../utils/logger';
 import {
   NotoSans_100Thin,
   NotoSans_200ExtraLight,
@@ -30,7 +31,11 @@ import {
 
 SplashScreen.preventAutoHideAsync();
 
+// Setup error filtering on app start
+setupErrorFilter();
+
 export default function RootLayout() {
+  const pathname = usePathname();
   const [fontsLoaded, fontError] = useFonts({
     NotoSans_100Thin,
     NotoSans_200ExtraLight,
@@ -63,14 +68,16 @@ export default function RootLayout() {
       <ThemeProvider value={DefaultTheme}>
         <View style={{ flex: 1 }}>
           {/* Top SafeArea (light theme) */}
-          <SafeAreaView style={{ backgroundColor: '#f0f7ff' }}>
+          <SafeAreaView style={{ 
+            backgroundColor: pathname?.includes('/chat/') ? '#f9fafe' : '#DBEDEC' 
+          }}>
             {Platform.OS === 'android' && (
               <RNStatusBar backgroundColor="#4a90e2" barStyle="light-content" />
             )}
           </SafeAreaView>
 
           {/* Main App Stack */}
-          <View style={{ flex: 1, backgroundColor: '#f0f7ff' }}>
+          <View style={{ flex: 1, backgroundColor: '#DBEDEC' }}>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="+not-found" />
@@ -84,8 +91,10 @@ export default function RootLayout() {
             </Stack>
           </View>
 
-          {/* Bottom SafeArea (light theme) */}
-          <SafeAreaView style={{ backgroundColor: '#f0f7ff' }} />
+          {/* Bottom SafeArea */}
+          <SafeAreaView style={{ 
+            backgroundColor: pathname === '/login' || pathname === '/signup' ? '#DBEDEC' : '#ffffff' 
+          }} />
         </View>
 
         <ExpoStatusBar style="dark" />

@@ -6,8 +6,6 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db, auth, storage } from '../../../firebaseConfig';
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import Constants from 'expo-constants';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -16,6 +14,7 @@ import DoctorsScreen from './DoctorsScreen';
 import Markdown from 'react-native-markdown-display';
 const logo = require('../../../assets/images/transparent-logo-v.png');
 const headerLogo = require('../../../assets/images/transparent-logo.png');
+const doctorIcon = require('../../../assets/images/doctor.png');
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -107,70 +106,196 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
     }
   }, [messages])
 
+  // Debounce summary generation to prevent infinite loops
+  const summaryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastMessageCountRef = useRef(0);
+  const isGeneratingSummaryRef = useRef(false);
+  
   useEffect(() => {
-    console.log(messages)
-    generateSummary(messages)
+    // Only generate summary if message count actually increased (new messages added)
+    // and we're not already generating a summary
+    if (messages.length <= lastMessageCountRef.current || isGeneratingSummaryRef.current) {
+      lastMessageCountRef.current = messages.length;
+      return;
+    }
+    
+    // Clear existing timeout
+    if (summaryTimeoutRef.current) {
+      clearTimeout(summaryTimeoutRef.current);
+    }
+    
+    // Only generate summary if there are bot messages and enough messages to summarize
+    const hasBotMessages = messages.some(m => m.sender === 'bot' && m.text);
+    if (!hasBotMessages || messages.length < 2) {
+      lastMessageCountRef.current = messages.length;
+      return;
+    }
+    
+    // Debounce: wait 5 seconds after last message before generating summary
+    // This prevents rapid-fire API calls
+    summaryTimeoutRef.current = setTimeout(async () => {
+      if (isGeneratingSummaryRef.current) return; // Prevent concurrent calls
+      isGeneratingSummaryRef.current = true;
+      try {
+        await generateSummary(messages);
+      } finally {
+        isGeneratingSummaryRef.current = false;
+        lastMessageCountRef.current = messages.length;
+      }
+    }, 5000); // Increased to 5 seconds to reduce API calls
+    
+    return () => {
+      if (summaryTimeoutRef.current) {
+        clearTimeout(summaryTimeoutRef.current);
+      }
+    };
   }, [messages])
 
+  // Check if summary has valid data
+  const hasValidSummary = () => {
+    return summary.diagnosis && 
+           summary.diagnosis !== "Not enough information" && 
+           summary.diagnosis.trim() !== "";
+  };
+
   const openDrawer = () => {
-    Keyboard.dismiss()
+    Keyboard.dismiss();
     setDrawerVisible(true);
+    // Set doctors to be expanded when drawer opens
+    setExpandedCard('doctors');
     Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start();
   };
 
   const closeDrawer = () => {
-    Animated.timing(slideAnim, { toValue: 300, duration: 300, useNativeDriver: true }).start(() => setDrawerVisible(false));
+    Animated.timing(slideAnim, { toValue: 300, duration: 300, useNativeDriver: true }).start(() => {
+      setDrawerVisible(false);
+      setExpandedCard(null); // Reset expanded card when closing
+    });
   };
 
-  const API_KEY = Constants.expoConfig?.extra?.GEMINI_API_KEY;
-  const genAI = new GoogleGenerativeAI(API_KEY);
+  const BACKEND_URL = 'https://supervisor-agent-139431081773.us-central1.run.app/api/v1/main';
 
-  async function getGeminiResponse(msg: string) {
+  async function getGeminiResponse(msg: string, imageUrl?: string) {
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
-      const chat = model.startChat({
-        history: [
-          { role: "user", parts: [{ text: "Hi" }] },
-          { role: "model", parts: [{ text: "Hello! How can I assist you today?" }] },
-        ]
+      if (!auth.currentUser) {
+        return "Please sign in to continue.";
+      }
+
+      // Get Firebase auth token
+      const token = await auth.currentUser.getIdToken();
+      
+      // Determine speciality from chatCategory
+      const speciality = chatCategory || 'skin'; // Default to 'skin' if not set
+      
+      const requestBody = {
+        message: msg || '',
+        image_url: imageUrl || '',
+        user_id: auth.currentUser.uid,
+        chat_id: chatId,
+        type: imageUrl ? 'image' : 'text',
+        speciality: speciality
+      };
+
+      console.log('🔵 Backend API Request:', {
+        url: BACKEND_URL,
+        method: 'POST',
+        body: requestBody
       });
-      const result = await chat.sendMessage(msg);
-      return result.response.text();
+
+      const response = await fetch(BACKEND_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('🟢 Backend API Response Status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('🔴 Backend API Error Response:', errorText);
+        throw new Error(`Backend API error: ${response.status} - ${errorText}`);
+      }
+
+      const responseText = await response.text();
+      console.log('🟡 Backend API Raw Response:', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('🟢 Backend API Parsed JSON:', JSON.stringify(data, null, 2));
+      } catch (parseError) {
+        console.error('🔴 Backend API Response is not valid JSON:', parseError);
+        console.log('🟡 Returning raw response text');
+        return responseText || "Sorry, something went wrong.";
+      }
+
+      // Check various possible response formats
+      if (data.response) {
+        console.log('✅ Using data.response');
+        return data.response;
+      } else if (data.message) {
+        console.log('✅ Using data.message');
+        return data.message;
+      } else if (data.text) {
+        console.log('✅ Using data.text');
+        return data.text;
+      } else if (typeof data === 'string') {
+        console.log('✅ Response is a string');
+        return data;
+      } else {
+        console.warn('⚠️ Unknown response format, returning full data:', data);
+        return JSON.stringify(data) || "Sorry, something went wrong.";
+      }
     } catch (error) {
-      console.error("Gemini error:", error);
+      console.error("API error:", error);
       return "Sorry, something went wrong.";
     }
   }
 
   const handleSend = async () => {
     if (!input.trim()) return;
-    await addDoc(collection(db, `chats/${chatId}/messages`), {
-      text: input,
-      createdAt: serverTimestamp(),
-      user: auth.currentUser?.email || "anonymous",
-      userId: auth.currentUser?.uid,
-      sender: "user"
-    });
-    setInput('');
-    setTimeout(async () => {
-      const response = await getGeminiResponse(input);
-      await addDoc(collection(db, `chats/${chatId}/messages`), {
-        text: response,
-        createdAt: serverTimestamp(),
-        user: "AI Bot",
-        userId: auth.currentUser?.uid,
-        sender: "bot"
-      });
-    }, 1200);
+    
+    // Save user input locally for optimistic UI update
+    const userMessageText = input;
+    setInput(''); // Clear input immediately for better UX
+    
+    // Send to backend - backend will handle saving to Firestore
+    // The Firestore listener will pick up the messages when backend saves them
+    try {
+      await getGeminiResponse(userMessageText);
+      // Backend handles saving both user and bot messages to Firestore
+      // Frontend just listens via onSnapshot to update UI
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Optionally show error to user
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+    }
   };
 
   const uploadImageAsync = async (uri: string, chatId: string) => {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    const filename = `chats/${chatId}/${Date.now()}.jpg`;
-    const storageRef = ref(storage, filename);
-    await uploadBytes(storageRef, blob);
-    return await getDownloadURL(storageRef);
+    try {
+      // Fetch the image as a blob for React Native
+      const response = await fetch(uri);
+      
+      // Check if response is ok
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+      
+      // Convert to blob
+      const blob = await response.blob();
+      
+      const filename = `chats/${chatId}/${Date.now()}.jpg`;
+      const storageRef = ref(storage, filename);
+      await uploadBytes(storageRef, blob);
+      return await getDownloadURL(storageRef);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
   };
 
   const handleSendImage = () => {
@@ -237,96 +362,80 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
 
   const handleImageUpload = async (localUri: string) => {
     try {
-      // Step 1: Upload to Firebase Storage
+      // Upload to Firebase Storage to get a publicly accessible URL
+      // Backend requires image_url to be http, https, or gs:// (not base64 due to validation)
       const imageUrl = await uploadImageAsync(localUri, chatId);
       setImages(prev => [...prev, imageUrl]);
   
-      // Step 2: Add user message (image)
-      await addDoc(collection(db, `chats/${chatId}/messages`), {
-        text: "",
-        image: imageUrl,
-        createdAt: serverTimestamp(),
-        user: auth.currentUser?.email || "anonymous",
-        userId: auth.currentUser?.uid,
-        sender: "user"
-      });
-  
+      // Update chat timestamp
       await updateDoc(doc(db, `chats/${chatId}`), {
         last_message_at: serverTimestamp()
       });
   
-      // Step 3: Send image to ML model for prediction
-      const formData = new FormData();
-      const fileName = localUri.split('/').pop() || 'image.jpg';
-      const fileType = fileName.split('.').pop();
-  
-      formData.append('file', {
-        uri: localUri,
-        name: fileName,
-        type: `image/${fileType}`
-      });
-  
-      const mlResponse = await fetch('https://skin-disease-cv-model-139431081773.us-central1.run.app/predict', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-  
-      const prediction = await mlResponse.json();
-  
-      const rawPredictionText = `Prediction result: Class - ${prediction.predicted_class}, Confidence - ${(prediction.confidence * 100).toFixed(2)}%`;
-  
-      // Step 4: Use Gemini to turn prediction into a human-readable explanation
-      const geminiPrompt = `
-        The model detected: ${prediction.predicted_class}
-        Confidence level: ${(prediction.confidence * 100).toFixed(2)}%
-
-        Based on this, please provide a human-understandable response to the user, including:
-        - What this condition means in plain terms
-        - Whether they should be concerned
-        - If a follow-up with a healthcare provider is necessary
-
-        Remove all the unnecessary parts like "Okay, here's a message you can show the user: " and quotations, etc. Give just the response that I can show the user as a message response.
-        Always start with "The model indicates ".
-      `;
-  
-      const responseText = await getGeminiResponse(geminiPrompt);
-      await addDoc(collection(db, `chats/${chatId}/messages`), {
-        text: responseText,
-        createdAt: serverTimestamp(),
-        user: "AI Bot",
-        userId: auth.currentUser?.uid,
-        sender: "bot"
-      });
-  
-      await updateDoc(doc(db, `chats/${chatId}`), {
-        last_message_at: serverTimestamp()
-      });
+      // Send Firebase Storage URL to backend API
+      // Backend will download from this URL and process the image
+      // Backend will handle saving both user message (with image) and bot response to Firestore
+      await getGeminiResponse('', imageUrl);
   
     } catch (error) {
       console.error("Image upload or analysis failed:", error);
+      Alert.alert('Error', 'Failed to upload image. Please try again.');
     }
   };
 
-  const renderExpandableCard = (title: string, key: 'summary' | 'doctors', Component: React.ComponentType<any>) => (
-    <View style={[styles.card, expandedCard === key && { height: screenHeight * 0.65 }]}> 
-      <TouchableOpacity onPress={() => setExpandedCard(prev => prev === key ? null : key)}>
-        <Text style={styles.cardTitle}>{title}</Text>
-        {
-          expandedCard === key ? null : <Text style={styles.cardText}>{key === 'summary' ? 'AI-generated summary of your recent chat.' : 'Find nearby providers for follow-up care.'}</Text>
-        }
-      </TouchableOpacity>
-      {expandedCard === key ? (
-        <View style={styles.expandedCardContent}>
-          <Component chatId={chatId} />
-        </View>
-      ) : (
-        null
-      )}
-    </View>
-  );
+  const renderExpandableCard = (title: string, key: 'summary' | 'doctors', Component: React.ComponentType<any>) => {
+    const isSummary = key === 'summary';
+    const canExpand = isSummary ? hasValidSummary() : true;
+    const isNoSummary = isSummary && !canExpand;
+    
+    return (
+      <View style={[
+        styles.card, 
+        expandedCard === key && { height: screenHeight * 0.65 },
+        isNoSummary && styles.cardNoSummary
+      ]}> 
+        <TouchableOpacity 
+          onPress={() => {
+            if (canExpand) {
+              setExpandedCard(prev => prev === key ? null : key);
+            } else {
+              Alert.alert(
+                "No Summary Available",
+                "There's no summary yet. Please continue your conversation to generate a summary."
+              );
+            }
+          }}
+          disabled={!canExpand && expandedCard !== key}
+          style={isNoSummary ? styles.cardHeaderNoSummary : undefined}
+        >
+          <View style={isNoSummary ? styles.cardTitleRow : undefined}>
+            <Text style={[styles.cardTitle, isNoSummary && styles.cardTitleNoSummary]}>{title}</Text>
+            {isNoSummary && (
+              <Text style={styles.noSummaryText}>No summary available yet.</Text>
+            )}
+          </View>
+          {
+            expandedCard === key ? null : (
+              !isNoSummary && (
+                <Text style={styles.cardText}>
+                  {isSummary 
+                    ? 'AI-generated summary of your recent chat.'
+                    : 'Find nearby providers for follow-up care.'}
+                </Text>
+              )
+            )
+          }
+        </TouchableOpacity>
+        {expandedCard === key && canExpand ? (
+          <View style={styles.expandedCardContent}>
+            <Component chatId={chatId} />
+          </View>
+        ) : (
+          null
+        )}
+      </View>
+    );
+  };
 
   const markdownStyles = {
     body: {
@@ -415,11 +524,30 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
   };
 
   const generateSummary = async (msgs: Message[]) => {
+    // Prevent summary generation if we're in the middle of a chat
+    // Only generate summary for completed conversations
+    const recentMessages = msgs.slice(-5); // Check last 5 messages
+    const hasRecentBotMessage = recentMessages.some(m => m.sender === 'bot');
+    const hasRecentUserMessage = recentMessages.some(m => m.sender === 'user');
+    
+    // If there's a recent user message, the conversation is still active - skip summary
+    if (hasRecentUserMessage) {
+      console.log('⏭️ Skipping summary - conversation still active');
+      return;
+    }
+    
     const relevantTexts = msgs
-      .filter(m => m.sender === 'bot' && m.text && !m.text.includes("[Image]"))
+      .filter(m => m.sender === 'bot' && m.text && !m.text.includes("[Image]") && !m.text.includes("Rate limit"))
       .map(m => m.text)
       .join('\n');
+    
+    // Don't generate summary if there's not enough content
+    if (relevantTexts.length < 50) {
+      console.log('⏭️ Skipping summary - not enough content');
+      return;
+    }
   
+    console.log('🔄 Generating summary...');
     const geminiPrompt = `
       You're an assistant that summarizes skin lesion diagnosis conversations.
       
@@ -442,18 +570,16 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
       ${relevantTexts}
       `;
   
-    const responseText = await getGeminiResponse(geminiPrompt);
-
-    console.log("responseText", responseText)
-  
     try {
+      const responseText = await getGeminiResponse(geminiPrompt);
 
+      console.log("📋 Summary responseText", responseText);
+  
       if (
         !responseText.includes('{') ||
-        !responseText.includes('}') ||
-        (!responseText.includes('```json'))
+        !responseText.includes('}')
       ) {
-        console.warn("Gemini response not JSON. Skipping.");
+        console.warn("⚠️ Summary response not JSON. Skipping.");
         return {
           diagnosis: "Not enough information",
           symptoms: [],
@@ -464,15 +590,15 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
       }
       
       const cleanJson = responseText
-      .replace(/```json|```/g, '') // Remove Markdown blocks
-      .trim();
+        .replace(/```json|```/g, '') // Remove Markdown blocks
+        .trim();
 
       const parsed: Summary = JSON.parse(cleanJson);
       setSummary(parsed);
+      console.log('✅ Summary generated successfully');
       return parsed;
     } catch (err) {
-      console.error("Gemini response was not valid JSON:", responseText);
-      console.error("error", err)
+      console.error("❌ Summary generation error:", err);
       return {
         diagnosis: "Not enough information",
         symptoms: ["Not enough information"],
@@ -497,8 +623,8 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
                   <Image source={headerLogo} style={styles.headerLogo} resizeMode="contain" />
                 </View>
                 <View style={styles.headerIcons}>
-                  <TouchableOpacity onPress={openDrawer}>
-                    <MaterialIcons name="more-vert" size={24} color="#000" />
+                  <TouchableOpacity onPress={openDrawer} style={styles.doctorIconButton}>
+                    <Image source={doctorIcon} style={styles.doctorIcon} resizeMode="contain" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -659,6 +785,14 @@ const styles = StyleSheet.create({
   headerIcons: {
     flexDirection: 'row',
     gap: 10,
+    alignItems: 'center',
+  },
+  doctorIconButton: {
+    padding: 4,
+  },
+  doctorIcon: {
+    width: 28,
+    height: 28,
   },
   container: { flex: 1, backgroundColor: '#f9fafe' },
   messages: { padding: 12, paddingBottom: 40 },
@@ -749,7 +883,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     width: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: '#f9fafe',
     borderLeftWidth: 1,
     borderLeftColor: '#ccc',
     padding: 16,
@@ -776,7 +910,7 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
   },
   card: {
-    backgroundColor: '#f1f1f1',
+    backgroundColor: '#DBEDEC',
     borderRadius: 16,
     padding: 16,
     marginVertical: 8,
@@ -785,15 +919,45 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#A5CCC9',
+  },
+  cardNoSummary: {
+    minHeight: 50,
+    paddingVertical: 12,
+  },
+  cardHeaderNoSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 8,
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#2c3e50',
     marginBottom: 8,
+  },
+  cardTitleNoSummary: {
+    marginBottom: 0,
+  },
+  noSummaryText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+    marginBottom: 0,
   },
   cardText: {
     fontSize: 14,
-    color: '#555',
+    color: '#2c3e50',
+  },
+  disabledText: {
+    color: '#999',
+    fontStyle: 'italic',
   },
   leaveButton: {
     backgroundColor: '#ef5350',
@@ -837,7 +1001,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     width: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: '#f9fafe',
     borderLeftWidth: 1,
     borderLeftColor: '#ccc',
     padding: 16,

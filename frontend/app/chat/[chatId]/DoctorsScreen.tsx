@@ -3,6 +3,7 @@ import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
   TouchableOpacity, Linking, Alert, TextInput, Button, Modal, Dimensions
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import taxonomy from '../../../assets/nucc_taxonomy_250.json';
@@ -20,6 +21,8 @@ type Doctor = {
   specialty: string;
   address: string;
   mapQuery: string;
+  latitude?: number;
+  longitude?: number;
 };
 type TaxonomyEntry = {
   Grouping: string;
@@ -58,6 +61,13 @@ export default function DoctorsScreen({ summary, chatCategory }: { summary: Summ
   const [zipCode, setZipCode] = useState<string>('');
   const [city, setCity] = useState<string>('');
   const [zipInput, setZipInput] = useState('');
+  const [mapRegion, setMapRegion] = useState({
+    latitude: 41.8781, // Chicago default
+    longitude: -87.6298,
+    latitudeDelta: 0.1,
+    longitudeDelta: 0.1,
+  });
+  const [showMap, setShowMap] = useState(false); // Default to list mode
   const [selectedSpecialty, setSelectedSpecialty] = useState(() => {
     // If summary has a specialty, use it; otherwise use chat category default
     if (summary.specialty) {
@@ -305,22 +315,71 @@ export default function DoctorsScreen({ summary, chatCategory }: { summary: Summ
 
       if (!json.results) throw new Error('No results found');
 
-      const parsed: Doctor[] = json.results.map((doc: any) => {
-        const basic = doc.basic || {};
-        const address = doc.addresses?.[0] || {};
-        const name = `${basic.first_name || ''} ${basic.last_name || ''}`.trim();
-        const specialty = doc.taxonomies?.[0]?.desc || 'N/A';
-        const fullAddress = `${address.address_1 || ''} ${address.city || ''}, ${address.state || ''} ${formatZipCode(address.postal_code) || ''}`;
-        const mapQuery = `${address.address_1 || ''}, ${address.city || ''}, ${address.state || ''}`;
+      const parsed: Doctor[] = await Promise.all(
+        json.results.map(async (doc: any) => {
+          const basic = doc.basic || {};
+          
+          // Find the address with address_purpose as "LOCATION"
+          const addresses = doc.addresses || [];
+          const locationAddress = addresses.find((addr: any) => addr.address_purpose === 'LOCATION') || addresses[0] || {};
+          
+          const name = `${basic.first_name || ''} ${basic.last_name || ''}`.trim();
+          const specialty = doc.taxonomies?.[0]?.desc || 'N/A';
+          const fullAddress = `${locationAddress.address_1 || ''} ${locationAddress.city || ''}, ${locationAddress.state || ''} ${formatZipCode(locationAddress.postal_code) || ''}`;
+          const mapQuery = `${locationAddress.address_1 || ''}, ${locationAddress.city || ''}, ${locationAddress.state || ''}`;
 
-        return {
-          name: name || doc.basic.organization_name || 'Unknown',
-          specialty,
-          address: fullAddress,
-          mapQuery
-        };
-      });
+          // Geocode address to get coordinates
+          let latitude: number | undefined;
+          let longitude: number | undefined;
+          try {
+            if (locationAddress.address_1 && locationAddress.city && locationAddress.state) {
+              const geoResults = await Location.geocodeAsync(mapQuery);
+              if (geoResults.length > 0) {
+                latitude = geoResults[0].latitude;
+                longitude = geoResults[0].longitude;
+              }
+            }
+          } catch (err) {
+            console.error('Geocoding error for', mapQuery, err);
+          }
+
+          return {
+            name: name || doc.basic.organization_name || 'Unknown',
+            specialty,
+            address: fullAddress,
+            mapQuery,
+            latitude,
+            longitude
+          };
+        })
+      );
+      
       setDoctors(parsed);
+      
+      // Update map region to show doctors
+      if (parsed.length > 0) {
+        const doctorsWithCoords = parsed.filter(d => d.latitude && d.longitude);
+        if (doctorsWithCoords.length > 0) {
+          const avgLat = doctorsWithCoords.reduce((sum, d) => sum + (d.latitude || 0), 0) / doctorsWithCoords.length;
+          const avgLon = doctorsWithCoords.reduce((sum, d) => sum + (d.longitude || 0), 0) / doctorsWithCoords.length;
+          setMapRegion({
+            latitude: avgLat,
+            longitude: avgLon,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+          });
+        }
+      }
+      
+      // If we have user location, center map on user
+      if (location) {
+        setMapRegion({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        });
+      }
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Failed to fetch doctors');
@@ -360,6 +419,142 @@ export default function DoctorsScreen({ summary, chatCategory }: { summary: Summ
     }
     return '';
   }
+
+  const generateMapHTML = () => {
+    const doctorsWithCoords = doctors.filter(d => d.latitude && d.longitude);
+    
+    // Get Google Maps API key from environment
+    const mapsApiKey = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY || '';
+    
+    if (!mapsApiKey) {
+      console.warn('Google Maps API key not found');
+    }
+    
+    // Calculate center point
+    let centerLat = location?.coords.latitude || mapRegion.latitude;
+    let centerLon = location?.coords.longitude || mapRegion.longitude;
+    
+    if (doctorsWithCoords.length > 0) {
+      // Use average of doctor locations if available
+      const avgLat = doctorsWithCoords.reduce((sum, d) => sum + (d.latitude || 0), 0) / doctorsWithCoords.length;
+      const avgLon = doctorsWithCoords.reduce((sum, d) => sum + (d.longitude || 0), 0) / doctorsWithCoords.length;
+      
+      // If user location exists, use it; otherwise use average of doctors
+      if (!location) {
+        centerLat = avgLat;
+        centerLon = avgLon;
+      }
+    }
+    
+    // Create markers data for all doctors
+    const markersData = doctorsWithCoords.map((doctor, index) => {
+      const escapedName = (doctor.name || 'Doctor').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      const escapedSpecialty = (doctor.specialty || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      return {
+        lat: doctor.latitude,
+        lng: doctor.longitude,
+        name: escapedName,
+        specialty: escapedSpecialty,
+        label: (index + 1).toString()
+      };
+    });
+    
+    // Use Maps JavaScript API to show multiple markers
+    // This is more flexible than Embed API and supports multiple markers
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            html, body {
+              height: 100%;
+              width: 100%;
+              overflow: hidden;
+            }
+            #map {
+              height: 100%;
+              width: 100%;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="map"></div>
+          <script>
+            function initMap() {
+              const center = { lat: ${centerLat}, lng: ${centerLon} };
+              const map = new google.maps.Map(document.getElementById('map'), {
+                zoom: ${doctorsWithCoords.length > 0 ? 12 : 10},
+                center: center,
+                mapTypeId: 'roadmap'
+              });
+
+              // Add user location marker if available
+              ${location ? `
+                new google.maps.Marker({
+                  position: { lat: ${location.coords.latitude}, lng: ${location.coords.longitude} },
+                  map: map,
+                  title: 'Your Location',
+                  icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 8,
+                    fillColor: '#4285F4',
+                    fillOpacity: 1,
+                    strokeColor: '#ffffff',
+                    strokeWeight: 2
+                  },
+                  label: {
+                    text: 'You',
+                    color: '#4285F4',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }
+                });
+              ` : ''}
+
+              // Add markers for all doctors
+              const markers = ${JSON.stringify(markersData)};
+              
+              const bounds = new google.maps.LatLngBounds();
+              ${location ? `bounds.extend(new google.maps.LatLng(${location.coords.latitude}, ${location.coords.longitude}));` : ''}
+              
+              markers.forEach((markerData) => {
+                const marker = new google.maps.Marker({
+                  position: { lat: markerData.lat, lng: markerData.lng },
+                  map: map,
+                  title: markerData.name,
+                  label: markerData.label
+                });
+
+                const infoWindow = new google.maps.InfoWindow({
+                  content: '<div style="padding: 8px;"><strong>' + markerData.name + '</strong><br>' + markerData.specialty + '</div>'
+                });
+
+                marker.addListener('click', () => {
+                  infoWindow.open(map, marker);
+                });
+                
+                bounds.extend(new google.maps.LatLng(markerData.lat, markerData.lng));
+              });
+
+              // Fit bounds to show all markers
+              if (markers.length > 0 || ${location ? 'true' : 'false'}) {
+                map.fitBounds(bounds);
+              }
+            }
+          </script>
+          <script async defer
+            src="https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&callback=initMap">
+          </script>
+        </body>
+      </html>
+    `;
+  };
 
   console.log(zipCode, city)
   console.log("doctors", doctors)
@@ -505,11 +700,41 @@ export default function DoctorsScreen({ summary, chatCategory }: { summary: Summ
         </View>
       </Modal>
 
+      {/* Toggle between Map and List */}
+      <View style={styles.toggleContainer}>
+        <TouchableOpacity
+          style={[styles.toggleButton, showMap && styles.toggleButtonActive]}
+          onPress={() => setShowMap(true)}
+        >
+          <Ionicons name="map" size={20} color={showMap ? '#fff' : '#666'} />
+          <Text style={[styles.toggleText, showMap && styles.toggleTextActive]}>Map</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleButton, !showMap && styles.toggleButtonActive]}
+          onPress={() => setShowMap(false)}
+        >
+          <Ionicons name="list" size={20} color={!showMap ? '#fff' : '#666'} />
+          <Text style={[styles.toggleText, !showMap && styles.toggleTextActive]}>List</Text>
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <ActivityIndicator size="large" style={{ marginTop: 50 }} />
       ) : error ? (
         <View style={styles.errorContainer}>
           <Text style={{ color: 'red', fontSize: 16 }}>{error}</Text>
+        </View>
+      ) : showMap ? (
+        <View style={styles.mapContainer}>
+          <WebView
+            style={styles.map}
+            source={{
+              html: generateMapHTML(),
+            }}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            originWhitelist={['*']}
+          />
         </View>
       ) : (
         <FlatList
@@ -523,7 +748,7 @@ export default function DoctorsScreen({ summary, chatCategory }: { summary: Summ
                   <Text style={styles.specialty}>{item.specialty}</Text>
                   <Text style={styles.address}>{item.address}</Text>
                 </View>
-                <Ionicons name="location-outline" size={20} color="#2c3e50" />
+                <Ionicons name="location-outline" size={20} color="#A5CCC9" />
               </View>
             </TouchableOpacity>
           )}
@@ -536,14 +761,21 @@ export default function DoctorsScreen({ summary, chatCategory }: { summary: Summ
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', padding: 10 },
   card: {
-    backgroundColor: '#e6f0fa',
+    backgroundColor: '#DBEDEC',
     padding: 12,
     marginBottom: 12,
-    borderRadius: 8
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#A5CCC9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  name: { fontSize: 16, fontWeight: 'bold' },
-  specialty: { fontSize: 14, color: '#333' },
-  address: { fontSize: 13, color: '#555' },
+  name: { fontSize: 16, fontWeight: 'bold', color: '#2c3e50' },
+  specialty: { fontSize: 14, color: '#2c3e50', marginTop: 4 },
+  address: { fontSize: 13, color: '#555', marginTop: 4 },
   errorContainer: {
     flex: 1, alignItems: 'center', justifyContent: 'center'
   },
@@ -647,5 +879,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    marginBottom: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    padding: 4,
+  },
+  toggleButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    gap: 6,
+  },
+  toggleButtonActive: {
+    backgroundColor: '#2c3e50',
+  },
+  toggleText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  toggleTextActive: {
+    color: '#fff',
+  },
+  mapContainer: {
+    flex: 1,
+    height: Dimensions.get('window').height * 0.6,
+    marginTop: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
   },
 });

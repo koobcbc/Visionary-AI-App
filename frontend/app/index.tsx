@@ -15,6 +15,7 @@ import AuthScreen from '../components/AuthScreen';
 const logo = require('../assets/images/colored-logo.png');
 import { useRouter } from 'expo-router';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
+import WaveBackground from '../components/WaveBackground';
 
 export const unstable_settings = { initialRouteName: "dashboard" };
 
@@ -28,50 +29,79 @@ export default function HomeScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={60}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-        >
-          <ExpoStatusBar style="dark" backgroundColor="#ffffff" />
-          <View style={styles.logoContainer}>
-            <Image source={logo} style={styles.logo} resizeMode="contain" />
-          </View>
-          <View style={styles.buttonWrapper}>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => router.push('/login')}
+      <View style={styles.wrapper}>
+        <WaveBackground 
+          topColor="#DBEDEC"
+          bottomColor="#FFFFFF"
+          wavePosition={0.35}
+        />
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.contentWrapper}>
+            <ExpoStatusBar style="dark" backgroundColor="#FFFFFF" />
+            {/* Logo in top section (above wave) */}
+            <View style={styles.topSection}>
+              <View style={styles.logoContainer}>
+                <Image source={logo} style={styles.logo} resizeMode="contain" />
+              </View>
+            </View>
+            
+            {/* Buttons in white section (below wave) */}
+            <ScrollView
+              contentContainerStyle={styles.whiteSection}
+              keyboardShouldPersistTaps="handled"
+              style={styles.scrollView}
             >
-              <Text style={styles.buttonText}>Log In</Text>
-            </TouchableOpacity>
+              <View style={styles.buttonWrapper}>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => router.push('/login')}
+                >
+                  <Text style={styles.buttonText}>Log In</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.button, styles.secondaryButton]}
-              onPress={() => router.push('/signup')}
-            >
-              <Text style={[styles.buttonText, styles.secondaryButtonText]}>
-                Sign Up
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.secondaryButton]}
+                  onPress={() => router.push('/signup')}
+                >
+                  <Text style={[styles.buttonText, styles.secondaryButtonText]}>
+                    Sign Up
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
-        </ScrollView>
-      </TouchableWithoutFeedback>
+        </TouchableWithoutFeedback>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
+    flex: 1,
+  },
+  contentWrapper: {
+    flex: 1,
+    zIndex: 1,
+  },
+  topSection: {
+    height: '35%', // Matches wavePosition 0.35
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  whiteSection: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 40,
-    paddingTop: 10,
-    backgroundColor: '#DBEDEC',
+    paddingVertical: 30,
+    paddingTop: 60,
   },
   logoContainer: {
-    marginBottom: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -92,7 +122,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   button: {
-    backgroundColor: '#4a90e2',
+    backgroundColor: '#B8D8D6',
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 12,
@@ -101,16 +131,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
+    color: '#2c3e50',
     fontSize: 16,
     fontWeight: 'bold',
   },
   secondaryButton: {
     backgroundColor: '#ffffff',
-    borderColor: '#4a90e2',
-    borderWidth: 1,
+    borderColor: '#DBEDEC',
+    borderWidth: 2,
   },
   secondaryButtonText: {
-    color: '#4a90e2',
+    color: '#2c3e50',
   },
 });
