@@ -1,0 +1,17 @@
+# Supervisor Agent Requirements
+
+# Core FastAPI dependencies
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+httpx==0.27.0
+pydantic==2.7.0
+
+# Google Cloud dependencies
+google-cloud-firestore==2.16.0
+google-cloud-storage==2.17.0
+
+# Environment management
+python-dotenv==1.0.1
+
+# Retry logic (optional, but useful for production)
+tenacity==8.3.0
