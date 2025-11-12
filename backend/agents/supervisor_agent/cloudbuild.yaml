@@ -1,0 +1,30 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-t", "us-central1-docker.pkg.dev/$PROJECT_ID/supervisor-repo/supervisor-agent", "."]
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "us-central1-docker.pkg.dev/$PROJECT_ID/supervisor-repo/supervisor-agent"]
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - "run"
+      - "deploy"
+      - "supervisor-agent"
+      - "--image"
+      - "us-central1-docker.pkg.dev/$PROJECT_ID/supervisor-repo/supervisor-agent"
+      - "--region"
+      - "us-central1"
+      - "--allow-unauthenticated"
+      - "--memory"
+      - "4Gi"
+      - "--cpu"
+      - "2"
+      - "--timeout"
+      - "300"
+      - "--max-instances"
+      - "10"
+      - "--min-instances"
+      - "0"
+      - "--set-env-vars"
+      - "ENABLE_SECURITY=true"
+images:
+  - us-central1-docker.pkg.dev/$PROJECT_ID/supervisor-repo/supervisor-agent
