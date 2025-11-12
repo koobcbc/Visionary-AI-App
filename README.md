@@ -222,7 +222,7 @@ We developed specialized medical-grade vision models trained on curated dermatol
 **Custom Efficient Net Finetuned Models**
 - Architecture: EfficientNet-B4 with custom classification head
 - Training: Transfer learning on medical image datasets
-- Classes: 20+ skin conditions, 15+ oral conditions
+- Classes: 8 skin conditions, 8 oral conditions
 - Validation: Cross-validated on diverse patient demographics
 
 ---
@@ -239,7 +239,6 @@ Our platform integrates real-time location to recommend **the right doctor or sp
 - **Location-aware search** using Google Maps API integration
 - **Real-time availability** and contact information
 - **Direct navigation** to healthcare providers
-- **Filtered results** by insurance, ratings, and distance
 - **Appointment booking** integration (future feature)
 
 #### 💡 Benefits
@@ -275,7 +274,7 @@ The Supervisor Agent is the central intelligence that manages the entire patient
 
 - **Framework**: LangGraph state machine
 - **API**: Flask REST API
-- **Deployment**: Google Cloud Run (serverless)
+- **Deployment**: Google Cloud Run
 - **State Management**: Firestore for persistence
 - **Authentication**: Firebase Auth integration
 
@@ -291,7 +290,7 @@ The Supervisor Agent is the central intelligence that manages the entire patient
 #### 📡 Core Functions
 
 ```python
-# Pseudo-code representation
+
 def supervisor_workflow(user_input, thread_id):
     # Determine which agent to invoke
     agent_type = classify_symptom_type(user_input)
@@ -355,15 +354,6 @@ cd skin-specialist-agent
 chmod +x deploy.sh
 ./deploy.sh
 ```
-
-#### ⚙️ Configuration
-
-- **Memory**: 2Gi
-- **CPU**: 2 cores
-- **Timeout**: 300 seconds
-- **Auto-scaling**: 0-10 instances
-- **Region**: us-central1
-- **Concurrency**: 80 requests per instance
 
 #### 📡 API Endpoints
 
@@ -479,12 +469,12 @@ cd vision-agent
 
 # Manual deployment
 gcloud run deploy vision-agent \
-  --image=gcr.io/adsp-34002-ip07/vision-agent:latest \
+  --image=gcr.io/project-id/vision-agent:latest \
   --region=us-central1 \
   --memory=2Gi \
   --cpu=2 \
   --timeout=300 \
-  --set-env-vars="GCP_PROJECT_ID=adsp-34002-ip07,GCP_LOCATION=us-central1"
+  --set-env-vars="GCP_PROJECT_ID=project-id,GCP_LOCATION=us-central1"
 ```
 
 #### 📡 API Endpoints
@@ -530,16 +520,16 @@ curl -X POST https://vision-agent.run.app/process \
 #### 🎯 CV Model Integration
 
 **Skin Disease Model:**
-- **Endpoint**: `https://skin-disease-cv-model-139431081773.us-central1.run.app/predict`
+- **Endpoint**: `https://skin-disease-cv-model.us-central1.run.app/predict`
 - **Method**: POST with multipart/form-data
 - **Input**: JPEG/PNG image file
 - **Output**: Disease classification with confidence scores
-- **Classes**: 20+ skin conditions
+- **Classes**: 8 skin conditions
 
 **Oral Disease Model:**
-- **Endpoint**: Configurable via `ORAL_CV_ENDPOINT` environment variable
+- **Endpoint**: `https://oral-disease-cv-model.us-central1.run.app/predict`
 - **Interface**: Same as skin model
-- **Classes**: 15+ oral conditions
+- **Classes**: 8 oral conditions
 
 #### 🔍 Validation Logic
 
@@ -900,7 +890,7 @@ frontend/
 ### Prerequisites
 
 1. **Google Cloud Project** with billing enabled
-   - Project ID: `adsp-34002-ip07-visionary-ai`
+   - Project ID: `project-id`
 
 2. **Required APIs Enabled:**
    ```bash
@@ -933,7 +923,7 @@ Each agent includes a `deploy.sh` script for automated deployment to Google Clou
 
 ```bash
 # Set your GCP project
-gcloud config set project adsp-34002-ip07-visionary-ai
+gcloud config set project <project-id>
 
 # Deploy Supervisor Agent
 cd supervisor-agent
@@ -965,14 +955,14 @@ chmod +x deploy.sh
 
 ```bash
 # Build Docker image
-docker build -t gcr.io/adsp-34002-ip07-visionary-ai/supervisor-agent .
+docker build -t gcr.io/project-id/supervisor-agent .
 
 # Push to Container Registry
-docker push gcr.io/adsp-34002-ip07-visionary-ai/supervisor-agent
+docker push gcr.io/project-id/supervisor-agent
 
 # Deploy to Cloud Run
 gcloud run deploy supervisor-agent \
-  --image gcr.io/adsp-34002-ip07-visionary-ai/supervisor-agent \
+  --image gcr.io/project-id/supervisor-agent \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
@@ -981,7 +971,7 @@ gcloud run deploy supervisor-agent \
   --timeout 300 \
   --max-instances 10 \
   --min-instances 0 \
-  --set-env-vars "GCP_PROJECT_ID=adsp-34002-ip07-visionary-ai,GCP_LOCATION=us-central1"
+  --set-env-vars "GCP_PROJECT_ID=project-id,GCP_LOCATION=us-central1"
 
 # Get service URL
 gcloud run services describe supervisor-agent \
@@ -1033,7 +1023,7 @@ Set these environment variables during deployment:
 
 ```bash
 # Google Cloud Configuration
-GCP_PROJECT_ID=adsp-34002-ip07-visionary-ai
+GCP_PROJECT_ID=project-id
 GCP_LOCATION=us-central1
 
 # API Endpoints
@@ -1128,61 +1118,6 @@ The complete patient journey through Viscura's multi-agent system:
 13. Patient views nearby specialists via Google Maps integration
 ```
 
-### Common Response Format
-
-All agents return consistent JSON structures for easy integration:
-
-```json
-{
-  "status": "success",
-  "thread_id": "consultation_20250111_123456",
-  "response": "AI message to patient",
-  "metadata": {
-    "age": "45",
-    "gender": "male",
-    "body_region": "arm",
-    "symptoms": {
-      "itch": true,
-      "hurt": false,
-      "grow": false,
-      "change": true,
-      "bleed": false
-    }
-  },
-  "next_action": "collect_info | request_image | generate_report | complete",
-  "information_complete": true,
-  "should_request_image": true
-}
-```
-
-### Error Handling
-
-Standard error response across all services:
-
-```json
-{
-  "status": "error",
-  "error": "Detailed error description",
-  "error_code": "ERROR_CODE",
-  "timestamp": "2025-11-11T10:30:00Z",
-  "retry_after": 300
-}
-```
-
-**Common Error Codes:**
-- `INVALID_REQUEST`: Malformed request body
-- `THREAD_NOT_FOUND`: Invalid or expired thread_id
-- `IMAGE_VALIDATION_FAILED`: Image does not meet quality standards
-- `CV_MODEL_ERROR`: Disease prediction service unavailable
-- `RATE_LIMIT_EXCEEDED`: Too many requests
-- `INTERNAL_ERROR`: Unexpected server error
-
-### Rate Limits
-
-- **Conversation API**: 100 requests per minute per user
-- **Image Upload**: 10 images per hour per user
-- **Report Generation**: 20 reports per hour per user
-
 ---
 
 ## 🔮 Future Scope
@@ -1197,7 +1132,7 @@ Viscura is continuously evolving to expand healthcare accessibility and improve 
 - Develop eye disease-specific conversation flows
 - Enable retinal image analysis from smartphone cameras
 - Integrate with optometry and ophthalmology provider networks
-- **Target**: Q3 2025
+- **Target**: Q1 2026
 
 ### 🦷 **Expansion of Disease Coverage**
 
@@ -1207,7 +1142,7 @@ Viscura is continuously evolving to expand healthcare accessibility and improve 
 - Include rare dermatological conditions (vitiligo, lupus rashes, etc.)
 - Add oral cancer screening capabilities
 - Incorporate pediatric-specific disease models
-- **Target**: Q4 2025
+- **Target**: Q1 2026
 
 ### 🏥 **Lab Reports Focused Portal**
 
@@ -1218,7 +1153,7 @@ Viscura is continuously evolving to expand healthcare accessibility and improve 
 - AI-powered analysis of lab results and imaging
 - Automated report generation for physicians
 - Patient-provider collaboration features
-- **Target**: Q1 2026
+- **Target**: Q2 2026
 
 ### 🧠 **Continuous Learning AI**
 
@@ -1229,7 +1164,7 @@ Viscura is continuously evolving to expand healthcare accessibility and improve 
 - Automated retraining on validated cases
 - Performance monitoring and drift detection
 - Privacy-preserving federated learning
-- **Target**: Q2 2026
+- **Target**: Q3 2026
 
 ### 🌍 **Additional Planned Features**
 
@@ -1274,70 +1209,6 @@ We welcome contributions to Viscura! Whether you're fixing bugs, improving docum
 - Test on both iOS and Android for frontend changes
 - Document test cases and edge cases
 
-#### Pull Request Process
-
-1. **Fork the repository**
-   ```bash
-   git clone https://github.com/viscura/viscura-ai.git
-   cd viscura-ai
-   ```
-
-2. **Create a feature branch**
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-
-3. **Make your changes**
-   - Write clean, documented code
-   - Add tests for new functionality
-   - Update README if needed
-
-4. **Commit your changes**
-   ```bash
-   git commit -m 'Add amazing feature: detailed description'
-   ```
-
-5. **Push to your fork**
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-
-6. **Open a Pull Request**
-   - Provide clear description of changes
-   - Reference any related issues
-   - Include screenshots for UI changes
-   - Ensure all tests pass
-
-#### Commit Message Format
-
-```
-type(scope): subject
-
-body
-
-footer
-```
-
-**Types:**
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting)
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `chore`: Maintenance tasks
-
-**Example:**
-```
-feat(vision-agent): add support for WebP image format
-
-- Added WebP format validation
-- Updated CV model preprocessing pipeline
-- Added unit tests for WebP handling
-
-Closes #123
-```
-
 ### Areas for Contribution
 
 - 🐛 **Bug Fixes**: Help identify and fix issues
@@ -1380,143 +1251,6 @@ SOFTWARE.
 
 ---
 
-## 📞 Support
-
-### Getting Help
-
-For issues, questions, or feature requests:
-
-- **📚 Documentation**: Check component-specific READMEs in each agent directory
-- **🔍 Search Issues**: Look through [existing GitHub issues](https://github.com/viscura/viscura-ai/issues)
-- **💬 Discussions**: Join our [community discussions](https://github.com/viscura/viscura-ai/discussions)
-- **📧 Email**: support@viscura.ai
-- **🐛 Bug Reports**: [Open a GitHub issue](https://github.com/viscura/viscura-ai/issues/new)
-
-### Troubleshooting
-
-#### Backend Services
-
-**View logs:**
-```bash
-# Stream logs in real-time
-gcloud run services logs tail <service-name> --region=us-central1
-
-# View recent logs
-gcloud run services logs read <service-name> --region=us-central1 --limit=50
-```
-
-**Check service health:**
-```bash
-# Test health endpoint
-curl https://<service-name>.run.app/health
-```
-
-**Common issues:**
-- **Out of Memory**: Increase memory allocation in Cloud Run
-- **Timeout**: Increase timeout or optimize code
-- **Cold Start**: Set minimum instances to 1
-
-#### Frontend Application
-
-**Common issues:**
-- **Metro bundler errors**: Clear cache with `npx expo start -c`
-- **Firebase connection**: Verify `.env` configuration
-- **Build failures**: Update Expo SDK and dependencies
-
-**Debug mode:**
-```bash
-# Enable React Native debugger
-npx expo start --dev-client
-```
-
-### Service Status
-
-Check the status of Viscura services:
-- **Status Page**: https://status.viscura.ai
-- **API Health**: https://api.viscura.ai/health
-- **Incident History**: Monitor for planned maintenance
-
-### Community
-
-- **Discord**: Join our [developer community](https://discord.gg/viscura)
-- **Twitter**: [@ViscuraAI](https://twitter.com/viscuraai) for updates
-- **LinkedIn**: [Viscura Healthcare AI](https://linkedin.com/company/viscura)
-
----
-
-## 🏆 Acknowledgments
-
-### Team
-
-Viscura is built by a passionate team of healthcare and AI experts:
-
-- **AI/ML Team**: Computer vision and LLM integration
-- **Backend Team**: Multi-agent architecture and API development
-- **Frontend Team**: Mobile app development and UX design
-- **Medical Advisors**: Clinical validation and healthcare compliance
-- **DevOps Team**: Cloud infrastructure and deployment
-
-### Technologies & Partners
-
-Special thanks to:
-- **Google Cloud Platform**: For cloud infrastructure and AI services
-- **Firebase**: For authentication and real-time database
-- **Anthropic & OpenAI**: For advancing AI research
-- **React Native Community**: For excellent mobile development tools
-- **Open Source Contributors**: For libraries and frameworks we depend on
-
-### Research
-
-Our work is inspired by and builds upon research in:
-- Medical image analysis and computer vision
-- Conversational AI for healthcare
-- Multi-agent systems and LangGraph
-- Human-AI interaction design
-
----
-
-## 📊 Project Stats
-
-- **Lines of Code**: 50,000+
-- **Supported Diseases**: 35+ (20 skin, 15 oral)
-- **Diagnostic Accuracy**: >90% (F1 Score)
-- **Response Time**: <2 seconds (average)
-- **Uptime**: 99.9% (target)
-- **Languages**: Python, TypeScript
-- **Active Contributors**: 12
-
----
-
-## 📅 Changelog
-
-### Version 2.0 (November 2025)
-- 🚀 Multi-agent supervisor architecture with LangGraph
-- 🎯 Custom CV models with 90% accuracy
-- 📱 Complete mobile app redesign
-- 🗺️ Google Maps integration for doctor finder
-- 📊 Comprehensive reporting system
-- 🔒 Enhanced security and privacy features
-
-### Version 1.0 (July 2024)
-- 🎉 Initial release
-- 💬 Basic chat functionality
-- 🖼️ Image upload for skin conditions
-- 🔍 Simple disease classification
-
----
-
-**Last Updated**: November 11, 2025  
-**Version**: 2.0  
-**Maintainer**: Viscura Healthcare AI Team
-
----
-
-<div align="center">
-
 ## 🌟 **Viscura** - *Empowering patients with intelligent healthcare navigation*
 
 **Making healthcare accessible, affordable, and immediate for everyone.**
-
-[Website](https://viscura.ai) • [Documentation](https://docs.viscura.ai) • [API](https://api.viscura.ai) • [Support](mailto:support@viscura.ai)
-
-</div>
