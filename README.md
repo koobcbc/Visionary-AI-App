@@ -43,8 +43,6 @@ Healthcare accessibility remains a critical challenge affecting billions worldwi
 
 - **~4.7 Billion** people globally are affected by skin diseases
 - **~3.7 Billion** people globally are affected by oral diseases
-- **1-4 Months** patients waste trying to find the right specialty dermatology doctors
-- **$140** can be saved if we can find the right specialty of doctor for the patient in time
 
 ### **The Four Major Pain Points**
 
