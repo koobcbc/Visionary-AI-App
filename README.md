@@ -27,8 +27,6 @@
 6. [Deployment Guide](#deployment-guide)
 7. [API Documentation](#api-documentation)
 8. [Future Scope](#future-scope)
-9. [Contributing](#contributing)
-10. [License](#license)
 
 ---
 
@@ -1175,78 +1173,6 @@ Viscura is continuously evolving to expand healthcare accessibility and improve 
 - **Mental Health Module**: Expand to mental health screening and resources
 - **Chronic Disease Management**: Long-term monitoring for conditions like eczema, psoriasis
 - **Family Health Profiles**: Manage health for multiple family members
-
----
-
-## Contributing
-
-We welcome contributions to Viscura! Whether you're fixing bugs, improving documentation, or proposing new features, your help is appreciated.
-
-### Development Guidelines
-
-#### Code Standards
-
-**Python (Backend)**
-- Follow PEP 8 style guide
-- Use type hints for function signatures
-- Write docstrings for all public functions
-- Maximum line length: 100 characters
-- Use `black` for code formatting
-
-**TypeScript (Frontend)**
-- Follow Airbnb TypeScript style guide
-- Use functional components with hooks
-- Write JSDoc comments for complex functions
-- Use meaningful variable names
-- Prefer `const` over `let`
-
-#### Testing Requirements
-
-- Write unit tests for new features
-- Maintain >80% code coverage
-- Include integration tests for API endpoints
-- Test on both iOS and Android for frontend changes
-- Document test cases and edge cases
-
-### Areas for Contribution
-
-- **Bug Fixes**: Help identify and fix issues
-- **Documentation**: Improve guides, add examples
-- **Internationalization**: Add language support
-- **UI/UX**: Enhance mobile app design
-- **Research**: Improve CV model accuracy
-- **Accessibility**: Improve app accessibility
-- **Testing**: Increase test coverage
-
----
-
-## License
-
-This project is licensed under the **MIT License** - see the LICENSE file for details.
-
-```
-MIT License
-
-Copyright (c) 2025 Viscura Healthcare AI
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
 
 ---
 
