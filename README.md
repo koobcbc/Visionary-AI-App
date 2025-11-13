@@ -2,11 +2,12 @@
 
 <div align="center">
 
-# Viscura: Next-Gen AGENTIC AI for Dermatology and Dentistry
+# Viscura: Next-Gen Agentic AI for Dermatology and Dentistry
+
+**Transforming healthcare accessibility through intelligent diagnostics and smart care navigation**
 
 </div>
 
-**Transforming healthcare accessibility through intelligent diagnostics and smart care navigation**
 
 ---
 
