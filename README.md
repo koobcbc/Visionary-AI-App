@@ -8,37 +8,37 @@
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-1. [The Problem](#-the-problem)
-2. [The Solution: Viscura](#-the-solution-viscura)
-3. [Core Capabilities](#-core-capabilities)
+1. [The Problem](#the-problem)
+2. [The Solution: Viscura](#the-solution-viscura)
+3. [Core Capabilities](#core-capabilities)
    - [Conversational Clinical Agents](#1-conversational-clinical-agents)
    - [Vision Intelligence](#2-vision-intelligence)
    - [SMART Care Navigation](#3-smart-care-navigation)
-4. [Component Documentation](#-component-documentation)
+4. [Component Documentation](#component-documentation)
    - [Supervisor Agent](#supervisor-agent)
    - [Skin Specialist Agent](#skin-specialist-agent)
    - [Oral Health Agent](#oral-health-agent)
    - [Vision Agent](#vision-agent)
    - [Reporting Agent](#reporting-agent)
    - [Frontend Application](#frontend-application)
-5. [Technology Stack](#-technology-stack)
-6. [Deployment Guide](#-deployment-guide)
-7. [API Documentation](#-api-documentation)
-8. [Future Scope](#-future-scope)
-9. [Contributing](#-contributing)
-10. [License](#-license)
+5. [Technology Stack](#technology-stack)
+6. [Deployment Guide](#deployment-guide)
+7. [API Documentation](#api-documentation)
+8. [Future Scope](#future-scope)
+9. [Contributing](#contributing)
+10. [License](#license)
 
 ---
 
-## 🚨 The Problem
+## The Problem
 
 ### The Reality Patients Face Today
 
 Healthcare accessibility remains a critical challenge affecting billions worldwide:
 
-#### 📊 **The Scale of the Problem**
+#### **The Scale of the Problem**
 
 - **~4.7 Billion** people globally are affected by skin diseases
 - **~3.7 Billion** people globally are affected by oral diseases
@@ -47,25 +47,25 @@ Healthcare accessibility remains a critical challenge affecting billions worldwi
 
 ### **The Four Major Pain Points**
 
-#### ⏰ **a. Delayed Access: Too Long to Reach the Doctor**
+#### **a. Delayed Access: Too Long to Reach the Doctor**
 - Average wait time to see a specialist in the US is very long
 - Emergency room visits for non-emergencies waste valuable time and resources
 - Working professionals lose productivity traveling to multiple appointments
 - Critical conditions worsen during waiting periods
 
-#### ❓ **b. Doctor Dilemma: Which Specialist Should I See?**
+#### **b. Doctor Dilemma: Which Specialist Should I See?**
 - Patients don't know which specialist to consult
 - **Primary care physicians (PCPs) act as gatekeepers**, adding an extra unnecessary step
 - Misdiagnosis or delayed diagnosis due to seeing the wrong specialist first
 - Multiple referrals waste time and money
 
-#### 😟 **c. Uncertainty: Serious Problem or Home Remedy?**
+#### **c. Uncertainty: Serious Problem or Home Remedy?**
 - Inability to distinguish between conditions requiring immediate care vs. home remedies
 - Anxiety and stress from not knowing the severity of symptoms
 - Delayed treatment due to hesitation about seeking medical help
 - Fear of overreacting leads to undertreatment
 
-#### 💰 **d. Costly Missteps: Financial Burden**
+#### **d. Costly Missteps: Financial Burden**
 - **Time, money, and effort lost before getting the correct diagnosis**
 - Multiple doctor visits to find the right specialist
 - Unnecessary emergency room visits
@@ -73,13 +73,13 @@ Healthcare accessibility remains a critical challenge affecting billions worldwi
 
 ---
 
-## 💡 The Solution: Viscura
+## The Solution: Viscura
 
 ### **OUR SOLUTION - VISCURA**
 
 Viscura revolutionizes healthcare delivery through AI-powered virtual triage and intelligent care navigation, addressing every pain point in the current system.
 
-### ⚡ **a. AI At-Home Diagnosis**
+### **a. AI At-Home Diagnosis**
 **Get accurate preliminary assessments without visiting a lab**
 
 - **No lab visits required** for initial assessment
@@ -87,7 +87,7 @@ Viscura revolutionizes healthcare delivery through AI-powered virtual triage and
 - Receive AI-powered analysis within minutes
 - Accessible 24/7 from the comfort of your home
 
-### 👨‍⚕️ **b. Right Doctor, Right Away**
+### **b. Right Doctor, Right Away**
 **Get recommended with the correct specialist instantly**
 
 - **Skip the PCP** and go directly to the right specialist
@@ -95,7 +95,7 @@ Viscura revolutionizes healthcare delivery through AI-powered virtual triage and
 - Find nearby specialists using integrated Google Maps
 - No more guessing or wasted referrals
 
-### 😊 **c. Know What to Do Immediately**
+### **c. Know What to Do Immediately**
 **Understand your condition, immediate steps, or safe home remedies**
 
 - **Immediate diagnosis** with detailed, patient-friendly explanations
@@ -104,7 +104,7 @@ Viscura revolutionizes healthcare delivery through AI-powered virtual triage and
 - **Immediate care steps** while waiting for doctor appointments
 - Clear guidance on when to seek emergency care
 
-### 🎯 **d. Rapid, Cost-Effective Path**
+### **d. Rapid, Cost-Effective Path**
 **Efficient route to the right diagnosis**
 
 - Save time with direct-to-specialist navigation
@@ -114,7 +114,7 @@ Viscura revolutionizes healthcare delivery through AI-powered virtual triage and
 
 ---
 
-## 🏆 Our Competitive Edge
+## Our Competitive Edge
 
 ### **VISCURA CV MODELS OUTPERFORMED LLMS**
 
@@ -135,7 +135,7 @@ Viscura revolutionizes healthcare delivery through AI-powered virtual triage and
 
 ---
 
-## 🎯 Core Capabilities
+## Core Capabilities
 
 ### **VISCURA - OUR CORE CAPABILITIES**
 
@@ -147,7 +147,7 @@ Viscura integrates three powerful capabilities to deliver comprehensive healthca
 
 We built a multi-agent system designed to mimic clinical interviews. The AI agent asks context-aware, medically relevant questions to collect key symptoms, risk factors, and history, delivering **accurate triage and actionable care guidance** tailored to each user.
 
-#### 🔧 Features
+#### Features
 
 - **Empathetic conversation** that feels human and builds trust
 - **Structured data collection** (age, gender, symptoms, medical history)
@@ -155,10 +155,10 @@ We built a multi-agent system designed to mimic clinical interviews. The AI agen
 - **Stateful conversations** that remember previous interactions
 - **Dynamic follow-up** based on patient responses
 
-#### 🏥 Supported Specialties
+#### Supported Specialties
 
-- 🩺 **Dermatology**: Skin diseases, rashes, lesions, discoloration
-- 🦷 **Oral Health**: Gum disease, dental issues, mouth abnormalities
+- **Dermatology**: Skin diseases, rashes, lesions, discoloration
+- **Oral Health**: Gum disease, dental issues, mouth abnormalities
 
 Each agent is trained on specialty-specific protocols to ensure accurate information gathering and appropriate medical guidance.
 
@@ -194,14 +194,14 @@ Viscura employs a sophisticated **LangGraph-based supervisor-agent architecture*
 
 We developed specialized medical-grade vision models trained on curated dermatology and oral health datasets. Our models achieve **>90% diagnostic accuracy**, enabling early detection of skin and oral conditions in real-time, directly from a smartphone camera.
 
-#### 🎯 Superior Performance
+#### Superior Performance
 
 - **>90% accuracy** on test datasets (F1 Score: 89% for skin, 85% for oral)
 - **40% higher accuracy** than general-purpose multimodal LLMs
 - **Trained on clinical datasets** specific to dermatology and oral health
 - **Multi-stage validation** using Gemini Vision for quality assurance
 
-#### 🔬 Process Flow
+#### Process Flow
 
 1. **Image Upload**: Patient captures image using smartphone
 2. **Quality Validation**: Gemini Vision verifies image quality and relevance
@@ -210,14 +210,14 @@ We developed specialized medical-grade vision models trained on curated dermatol
 5. **Confidence Scoring**: Provides reliability metrics for each diagnosis
 6. **Expert Validation**: Results reviewed for accuracy
 
-#### 📸 Supported Image Sources
+#### Supported Image Sources
 
 - Direct smartphone camera capture
 - Photo library uploads
 - Google Cloud Storage (GCS) URLs
 - Local file paths
 
-#### 🏆 Model Specifications
+#### Model Specifications
 
 **Custom Efficient Net Finetuned Models**
 - Architecture: EfficientNet-B4 with custom classification head
@@ -233,7 +233,7 @@ We developed specialized medical-grade vision models trained on curated dermatol
 
 Our platform integrates real-time location to recommend **the right doctor or specialist** based on the user's symptoms and diagnosis. Users instantly receive curated referrals to qualified healthcare providers near them, **driving faster access to care and better outcomes**.
 
-#### 🗺️ Features
+#### Features
 
 - **Specialty-matched recommendations** based on AI diagnosis
 - **Location-aware search** using Google Maps API integration
@@ -241,7 +241,7 @@ Our platform integrates real-time location to recommend **the right doctor or sp
 - **Direct navigation** to healthcare providers
 - **Appointment booking** integration (future feature)
 
-#### 💡 Benefits
+#### Benefits
 
 - **Skip the PCP gatekeeping** process
 - **Save time** by going directly to the right specialist
@@ -253,7 +253,7 @@ Our platform integrates real-time location to recommend **the right doctor or sp
 
 ---
 
-## 📚 Component Documentation
+## Component Documentation
 
 ### Supervisor Agent
 
@@ -261,7 +261,7 @@ Our platform integrates real-time location to recommend **the right doctor or sp
 
 The Supervisor Agent is the central intelligence that manages the entire patient journey through the multi-agent system.
 
-#### 🎯 Responsibilities
+#### Responsibilities
 
 - Route patient queries to appropriate specialty agents (Skin/Oral)
 - Maintain conversation state across multiple agents
@@ -270,7 +270,7 @@ The Supervisor Agent is the central intelligence that manages the entire patient
 - Initiate reporting and care navigation
 - Handle error recovery and fallback scenarios
 
-#### 🛠️ Technology
+#### Technology
 
 - **Framework**: LangGraph state machine
 - **API**: Flask REST API
@@ -278,7 +278,7 @@ The Supervisor Agent is the central intelligence that manages the entire patient
 - **State Management**: Firestore for persistence
 - **Authentication**: Firebase Auth integration
 
-#### ⚡ Key Features
+#### Key Features
 
 - Thread-based conversation management with unique session IDs
 - Automatic agent selection based on patient symptoms
@@ -287,10 +287,9 @@ The Supervisor Agent is the central intelligence that manages the entire patient
 - Real-time state synchronization with frontend
 - Scalable architecture supporting concurrent users
 
-#### 📡 Core Functions
+#### Core Functions
 
 ```python
-
 def supervisor_workflow(user_input, thread_id):
     # Determine which agent to invoke
     agent_type = classify_symptom_type(user_input)
@@ -318,7 +317,7 @@ def supervisor_workflow(user_input, thread_id):
 
 LangGraph-based agent specialized in comprehensive skin condition assessment.
 
-#### 🔧 Features
+#### Features
 
 - **Structured information collection** for dermatological assessment
 - **Dynamic questioning** based on patient responses
@@ -327,7 +326,7 @@ LangGraph-based agent specialized in comprehensive skin condition assessment.
 - **Risk factor assessment** (sun exposure, moles, skin type)
 - **Image request workflow** when sufficient metadata is collected
 
-#### 📋 Required Information Collection
+#### Required Information Collection
 
 The agent systematically collects:
 
@@ -346,7 +345,7 @@ The agent systematically collects:
   - Sun exposure patterns
 - **Other**: Additional relevant information
 
-#### 🚀 Deployment
+#### Deployment
 
 ```bash
 # Quick deployment to Google Cloud Run
@@ -355,7 +354,7 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
-#### 📡 API Endpoints
+#### API Endpoints
 
 | Endpoint | Method | Description | Request Body |
 |----------|--------|-------------|--------------|
@@ -364,7 +363,7 @@ chmod +x deploy.sh
 | `/chat` | POST | Send patient message | `{"thread_id": "xxx", "message": "..."}` |
 | `/state/<thread_id>` | GET | Retrieve conversation state | None |
 
-#### 🧪 Testing Example
+#### Testing Example
 
 ```bash
 # Start a new consultation
@@ -401,7 +400,7 @@ curl https://skin-specialist-agent.run.app/state/consultation_20250111_123456
 
 Similar architecture to Skin Specialist Agent, optimized for oral health conditions and dental assessments.
 
-#### 🔧 Features
+#### Features
 
 - **Oral cavity-specific symptom collection**
 - **Dental history assessment** (cavities, gum disease, procedures)
@@ -410,7 +409,7 @@ Similar architecture to Skin Specialist Agent, optimized for oral health conditi
 - **Dietary factor assessment** (sugar intake, acidic foods)
 - **Smoking and alcohol history**
 
-#### 📋 Assessment Areas
+#### Assessment Areas
 
 The agent evaluates:
 
@@ -445,13 +444,13 @@ The agent evaluates:
 
 LangGraph-based agent that validates medical images and intelligently routes them to appropriate disease classification models.
 
-#### 🏗️ Architecture Flow
+#### Architecture Flow
 
 ```
 Image URL → URL Validation → Content Validation (Gemini Vision) → Route to CV Model → Return Prediction
 ```
 
-#### 🔧 Features
+#### Features
 
 - **Multi-source support**: GCS URLs, Firebase Storage, local paths
 - **Gemini Vision validation**: Ensures image relevance and quality
@@ -460,7 +459,7 @@ Image URL → URL Validation → Content Validation (Gemini Vision) → Route to
 - **Quality checks**: Validates image resolution, format, and content
 - **Privacy protection**: Secure image handling and transmission
 
-#### 🚀 Deployment
+#### Deployment
 
 ```bash
 # Automated deployment
@@ -477,7 +476,7 @@ gcloud run deploy vision-agent \
   --set-env-vars="GCP_PROJECT_ID=project-id,GCP_LOCATION=us-central1"
 ```
 
-#### 📡 API Endpoints
+#### API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -485,7 +484,7 @@ gcloud run deploy vision-agent \
 | `/process` | POST | Complete validation + prediction pipeline |
 | `/validate-only` | POST | Image validation only (no prediction) |
 
-#### 🧪 Request Example
+#### Request Example
 
 ```bash
 curl -X POST https://vision-agent.run.app/process \
@@ -496,7 +495,7 @@ curl -X POST https://vision-agent.run.app/process \
   }'
 ```
 
-#### 📊 Response Example
+#### Response Example
 
 ```json
 {
@@ -517,7 +516,7 @@ curl -X POST https://vision-agent.run.app/process \
 }
 ```
 
-#### 🎯 CV Model Integration
+#### CV Model Integration
 
 **Skin Disease Model:**
 - **Endpoint**: `https://skin-disease-cv-model.us-central1.run.app/predict`
@@ -531,7 +530,7 @@ curl -X POST https://vision-agent.run.app/process \
 - **Interface**: Same as skin model
 - **Classes**: 8 oral conditions
 
-#### 🔍 Validation Logic
+#### Validation Logic
 
 The Vision Agent performs multi-stage validation:
 
@@ -552,7 +551,7 @@ The Vision Agent performs multi-stage validation:
 
 AI-powered service that compiles comprehensive, empathetic diagnostic reports from chat history, metadata, image analysis, and CV model predictions.
 
-#### 🧠 Features
+#### Features
 
 - **Vertex AI Gemini integration** for natural language generation
 - **Multimodal analysis** combining text, metadata, and images
@@ -562,7 +561,7 @@ AI-powered service that compiles comprehensive, empathetic diagnostic reports fr
 - **Severity assessment** with clear action items
 - **Follow-up guidance** and next steps
 
-#### 🏗️ Architecture & Workflow
+#### Architecture & Workflow
 
 1. **Fetch Data**: Retrieve latest chat history and metadata from Firestore (via `chat_id`)
 2. **Retrieve Image**: Get most recent patient image from Firebase Storage/GCS
@@ -570,7 +569,7 @@ AI-powered service that compiles comprehensive, empathetic diagnostic reports fr
 4. **Generate Report**: Use Gemini LLM to synthesize all information into structured JSON
 5. **Return Response**: Deliver complete diagnostic summary to frontend
 
-#### 📋 Report Structure
+#### Report Structure
 
 ```json
 {
@@ -616,7 +615,7 @@ AI-powered service that compiles comprehensive, empathetic diagnostic reports fr
 }
 ```
 
-#### 🚀 Deployment
+#### Deployment
 
 ```bash
 cd reporting-agent
@@ -624,7 +623,7 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
-#### 🛠️ Technology Stack
+#### Technology Stack
 
 - **API Framework**: Flask REST API
 - **AI Model**: Vertex AI Gemini 2.0 Flash
@@ -633,7 +632,7 @@ chmod +x deploy.sh
 - **Deployment**: Google Cloud Run (Docker containerized)
 - **Language**: Python 3.10+
 
-#### 📡 API Endpoint
+#### API Endpoint
 
 ```bash
 # Generate report
@@ -645,7 +644,7 @@ curl -X POST https://reporting-agent.run.app/generate-report \
   }'
 ```
 
-#### 🎯 Report Generation Process
+#### Report Generation Process
 
 The Reporting Agent uses a sophisticated prompt engineering approach:
 
@@ -664,7 +663,7 @@ The Reporting Agent uses a sophisticated prompt engineering approach:
 
 Cross-platform mobile application providing the patient-facing interface for Viscura's AI healthcare assistant.
 
-#### 🎨 Features
+#### Features
 
 - **AI-powered chat interface** for medical consultations
 - **Speech-to-text input** for hands-free interaction
@@ -676,7 +675,7 @@ Cross-platform mobile application providing the patient-facing interface for Vis
 - **Report viewing** with clear, actionable information
 - **Push notifications** for appointment reminders (future)
 
-#### 🛠️ Tech Stack
+#### Tech Stack
 
 | Component | Technology |
 |-----------|------------|
@@ -690,13 +689,13 @@ Cross-platform mobile application providing the patient-facing interface for Vis
 | APIs | Google Gemini, Google Maps |
 | Language | TypeScript |
 
-#### 📱 Supported Platforms
+#### Supported Platforms
 
 - **iOS**: iPhone and iPad (iOS 13+)
 - **Android**: Smartphones and tablets (Android 8+)
 - **Testing**: iOS Simulator, Android Emulator, Physical devices via Expo Go
 
-#### 🚀 Installation
+#### Installation
 
 ```bash
 # Navigate to frontend directory
@@ -717,7 +716,7 @@ npm run ios      # iOS simulator
 npm run android  # Android emulator
 ```
 
-#### 🔧 Environment Variables
+#### Environment Variables
 
 Create a `.env` file with the following:
 
@@ -737,7 +736,7 @@ GEMINI_API_KEY=your_gemini_api_key
 SUPERVISOR_AGENT_URL=https://supervisor-agent.run.app
 ```
 
-#### 📂 Project Structure
+#### Project Structure
 
 ```
 frontend/
@@ -787,7 +786,7 @@ frontend/
 └── tsconfig.json
 ```
 
-#### 🎯 Key Screens & User Flow
+#### Key Screens & User Flow
 
 1. **Authentication Flow**
    - `login.tsx`: Email/password login
@@ -821,7 +820,7 @@ frontend/
    - `history.tsx`: Past consultation records
    - Settings and preferences
 
-#### 🔐 Security Features
+#### Security Features
 
 - **Firebase Authentication**: Secure user login and session management
 - **Data Encryption**: All sensitive data encrypted at rest and in transit
@@ -829,7 +828,7 @@ frontend/
 - **HIPAA Considerations**: Architecture designed for healthcare compliance
 - **Token Management**: Automatic refresh of authentication tokens
 
-#### 🎨 UI/UX Design Principles
+#### UI/UX Design Principles
 
 - **Empathetic Design**: Calming colors and supportive language
 - **Accessibility**: WCAG 2.1 AA compliance, screen reader support
@@ -840,7 +839,7 @@ frontend/
 
 ---
 
-## 🔧 Technology Stack
+## Technology Stack
 
 ### Backend Services
 
@@ -885,7 +884,7 @@ frontend/
 
 ---
 
-## 🚀 Deployment Guide
+## Deployment Guide
 
 ### Prerequisites
 
@@ -1084,7 +1083,7 @@ curl -X POST https://supervisor-agent.run.app/chat \
 
 ---
 
-## 📖 API Documentation
+## API Documentation
 
 ### Unified Request Flow
 
@@ -1120,11 +1119,11 @@ The complete patient journey through Viscura's multi-agent system:
 
 ---
 
-## 🔮 Future Scope
+## Future Scope
 
 Viscura is continuously evolving to expand healthcare accessibility and improve diagnostic capabilities.
 
-### 🔭 **Expansion to Ophthalmology**
+### **Expansion to Ophthalmology**
 
 **Extend CV models and conversational workflows to detect and diagnose common eye diseases such as cataracts and glaucoma.**
 
@@ -1134,7 +1133,7 @@ Viscura is continuously evolving to expand healthcare accessibility and improve 
 - Integrate with optometry and ophthalmology provider networks
 - **Target**: Q1 2026
 
-### 🦷 **Expansion of Disease Coverage**
+### **Expansion of Disease Coverage**
 
 **Extend CV models to cover more skin and oral diseases, including rare and chronic conditions.**
 
@@ -1144,7 +1143,7 @@ Viscura is continuously evolving to expand healthcare accessibility and improve 
 - Incorporate pediatric-specific disease models
 - **Target**: Q1 2026
 
-### 🏥 **Lab Reports Focused Portal**
+### **Lab Reports Focused Portal**
 
 **Develop a secure portal for healthcare professionals to upload lab reports, radiology scans, retinal fundus images, and other diagnostics.**
 
@@ -1155,7 +1154,7 @@ Viscura is continuously evolving to expand healthcare accessibility and improve 
 - Patient-provider collaboration features
 - **Target**: Q2 2026
 
-### 🧠 **Continuous Learning AI**
+### **Continuous Learning AI**
 
 **Implement self-improving AI models that learn from new patient cases and doctor feedback in real-time.**
 
@@ -1166,7 +1165,7 @@ Viscura is continuously evolving to expand healthcare accessibility and improve 
 - Privacy-preserving federated learning
 - **Target**: Q3 2026
 
-### 🌍 **Additional Planned Features**
+### **Additional Planned Features**
 
 - **Multi-language Support**: Support for Spanish, Mandarin, Hindi, and 10+ languages
 - **Telemedicine Integration**: Direct video consultation booking
@@ -1179,7 +1178,7 @@ Viscura is continuously evolving to expand healthcare accessibility and improve 
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions to Viscura! Whether you're fixing bugs, improving documentation, or proposing new features, your help is appreciated.
 
@@ -1211,17 +1210,17 @@ We welcome contributions to Viscura! Whether you're fixing bugs, improving docum
 
 ### Areas for Contribution
 
-- 🐛 **Bug Fixes**: Help identify and fix issues
-- 📝 **Documentation**: Improve guides, add examples
-- 🌐 **Internationalization**: Add language support
-- 🎨 **UI/UX**: Enhance mobile app design
-- 🔬 **Research**: Improve CV model accuracy
-- ♿ **Accessibility**: Improve app accessibility
-- 🧪 **Testing**: Increase test coverage
+- **Bug Fixes**: Help identify and fix issues
+- **Documentation**: Improve guides, add examples
+- **Internationalization**: Add language support
+- **UI/UX**: Enhance mobile app design
+- **Research**: Improve CV model accuracy
+- **Accessibility**: Improve app accessibility
+- **Testing**: Increase test coverage
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the **MIT License** - see the LICENSE file for details.
 
@@ -1251,6 +1250,6 @@ SOFTWARE.
 
 ---
 
-## 🌟 **Viscura** - *Empowering patients with intelligent healthcare navigation*
+## **Viscura** - *Empowering patients with intelligent healthcare navigation*
 
 **Making healthcare accessible, affordable, and immediate for everyone.**
