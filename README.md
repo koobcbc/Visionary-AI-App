@@ -1,10 +1,12 @@
 <img width="4000" height="1308" alt="transparent-logo-2" src="https://github.com/user-attachments/assets/e70b8d96-1350-4d02-bdf3-2572a5281f4c" />
 
+<div align="center">
+
 # Viscura: Next-Gen AGENTIC AI for Dermatology and Dentistry
 
-**Transforming healthcare accessibility through intelligent diagnostics and care navigation**
+</div>
 
-> *VISCURA - SMART DIAGNOSIS. INSTANTLY.*
+**Transforming healthcare accessibility through intelligent diagnostics and smart care navigation**
 
 ---
 
